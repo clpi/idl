@@ -1,0 +1,15 @@
+[package]
+name = "clpi/dlang"
+version = "1.0.0"
+description = "Building a toy lang in zig"
+license = "ISC"
+repository = "github.com/clpi/dlang"
+
+[[module]]
+name = "dlang"
+source = "dlang.wasm"
+abi = "wasi"
+
+[[command]]
+name = "dlang"
+module = "dlang"
