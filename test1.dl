@@ -1,5 +1,6 @@
 /*
   Hello world
+  TODO 
  */
 print("Hello, World!\n");
 
@@ -18,16 +19,16 @@ Person has {
     str? description
 }
 
-greet str name {
+greet to str name {
     print "Hi ", name, "!";
 }
 
-greetPerson Person p {
+greetPerson to Person p {
     print "Hi ", p.name, "!";
 }
 
-Person does greetPerson Person other {
-    greet other.name;
+Person does greetPerson to Person other {
+    do greet other.name;
     do my.sayName;
     print "Bye! I am ", do my.getName;
     print "I am ", do my.getAge, " years old";
@@ -35,15 +36,23 @@ Person does greetPerson Person other {
 
 Person does {
 
-    greetTwo Person person1, Person person2 {
-	do greet person1.name;
-	do greet person2.name;
-	do my.sayName;
-	print "Hello all ", person1.name, person2.name;
+    init to str name, int age, as Person {
+        new Person { 
+            name name, 
+            age age, 
+            description none 
+        }
+    }
+
+    greetTwo to Person person1, Person person2 {
+        do greet person1.name;
+        do greet person2.name;
+        do my.sayName;
+        print "Hello all ", person1.name, person2.name;
     }
 
     sayName {
-	print "My name is ", my name;
+	    print "My name is ", my name;
     }
 
     getName as int {
