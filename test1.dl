@@ -19,15 +19,15 @@ Person has {
     str? description
 }
 
-greet to str name {
+greet str name {
     print "Hi ", name, "!";
 }
 
-greetPerson to Person p {
+greetPerson Person p {
     print "Hi ", p.name, "!";
 }
 
-Person does greetPerson to Person other {
+Person does greetPerson Person other {
     do greet other.name;
     do my.sayName;
     print "Bye! I am ", do my.getName;

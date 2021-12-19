@@ -294,6 +294,7 @@ pub const TokenType = enum {
     kw_so,
     kw_is,
     kw_can,
+    kw_to,
     kw_and,
     kw_or,
     kw_does,
@@ -312,6 +313,8 @@ pub const TokenType = enum {
     kw_set,
     kw_for,
     kw_will,
+    kw_all,
+    kw_any,
     ident,
     int,
     str,
@@ -360,8 +363,14 @@ pub const TokenType = enum {
             return .kw_will;
         } else if (std.mem.eql(u8, inp, "for")) {
             return .kw_for;
+        } else if (std.mem.eql(u8, inp, "to")) {
+            return .kw_to;
         } else if (std.mem.eql(u8, inp, "set")) {
             return .kw_set;
+        } else if (std.mem.eql(u8, inp, "all")) {
+            return .kw_all;
+        } else if (std.mem.eql(u8, inp, "any")) {
+            return .kw_any;
         } else return null;
     }
 
@@ -396,6 +405,8 @@ pub const TokenType = enum {
             .kw_as => "kw_as",
             .kw_does => "kw_does",
             .kw_so => "kw_so",
+            .kw_all => "kw_all",
+            .kw_any => "kw_any",
             .op_assign => "op_assign",
             .lpar => "lpar",
             .rpar => "rpar",
@@ -420,6 +431,7 @@ pub const TokenType = enum {
             .kw_else => "kw_else",
             .kw_while => "kw_while",
             .kw_print => "kw_print",
+            .kw_to => "kw_to",
             .kw_set => "kw_set",
             .kw_put => "kw_put",
             .ident => "ident",
