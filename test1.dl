@@ -1,0 +1,75 @@
+/*
+  Hello world
+ */
+print("Hello, World!\n");
+
+print "Helo there";
+
+/* keywords following idents that open blocks: */
+/* has, does, can+, will+ */
+
+/* keywords preceding idents that open blocks: */
+/* do, have, is */
+
+/* Define a class */
+Person has {
+    str name,  
+    int age,
+    str? description
+}
+
+greet str name {
+    print "Hi ", name, "!";
+}
+
+greetPerson Person p {
+    print "Hi ", p.name, "!";
+}
+
+Person does greetPerson Person other {
+    greet other.name;
+    do my.sayName;
+    print "Bye! I am ", do my.getName;
+    print "I am ", do my.getAge, " years old";
+}
+
+Person does {
+
+    greetTwo Person person1, Person person2 {
+	do greet person1.name;
+	do greet person2.name;
+	do my.sayName;
+	print "Hello all ", person1.name, person2.name;
+    }
+
+    sayName {
+	print "My name is ", my name;
+    }
+
+    getName as int {
+	my.name
+    }
+
+    getDescription as str? {
+	my.description
+    }
+
+}
+
+/* Define attributes of data shared among classes */
+
+hasName will have {
+    int age,
+}
+
+/* Define attributes of functions shared among classes */
+attribute will do {
+
+    getAge as str {
+	my.age
+    }
+
+}
+
+person is attribute;
+
