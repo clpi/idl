@@ -1,17 +1,25 @@
-/*
-  Show Ident and Integers
- */
-phoenix_number is 142857;
-print(phoenix_number, "\n");
-
 /* NOTE: Defining, relating, and instantiating /*
 
 /* NOTE: DEFINING DATA STRUCTURE */
-Person has name str, age int, birthday str;
+Person has :name str, :age int, :birthday str;
+
+/* Test def */
 Dog has {
-    name str,
-    breed Breed
+    :name str :breed breed
 }
+
+Dog can {
+
+    bark self {
+
+    }
+
+    !sayName 
+}
+/* Accessing data */ 
+Dog:name
+
+/* Accessing methods */
 
 /* NOTE: Defining an enumeration */
 Breed set {

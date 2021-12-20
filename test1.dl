@@ -44,9 +44,9 @@ do sayHi fname str, lname str {
 /* Class init all-in-one (public by default, specify local to make priv)*/
 some local Person 
 has {
-    name str,
-    age int,
-    about str?
+    :name str,
+    :age int,
+    :about str?
 } can {
     /* does before a block prefixes functions */
     do sayHi {
@@ -57,12 +57,12 @@ has {
     /* <<var>> with <<args>> as <<type>> */
     /* getName <<args>> -> <<type>> */
     do getName self as str {
-        get self.name
+        get self:name
     }
 
     /* Asterisk designates mutability */
     do changeName self*, newName str {
-        set self.name to newName
+        set self:name to newName
     } as str
 
 
