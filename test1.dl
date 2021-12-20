@@ -6,27 +6,152 @@ print("Hello, World!\n");
 
 print "Helo there";
 
-/* keywords following idents that open blocks: */
-/* has, does, can+, will+ */
+/*
+    NOTE: Builtin types: Int, String, List
+        - Ex. Int 8 => produces integer32 of value 8
+        - Ex. "Test" => Produces string of value "Test"
+*/
 
-/* keywords preceding idents that open blocks: */
-/* do, have, is */
+/* 
+    NOTE: Define a class's data  (brackets optional)
+        - define syntax: <Class> has <Fields>
+        - fields syntax: <Field> (as) <Type>
+*/
 
-/* Define a class */
-Person has {
-    str name,  
-    int age,
-    str? description
+/* NOTE basic syntax
+   Verb Statements:
+       - <Ident>: States existence of some variable
+       - has: Define data associated with a variable
+       - can: Define procedures as methods with a variable
+       - will: Define a relationship between variables
+
+    Defining a function: <<fn var>> (with) <<args>> as <<type>> does
+        - The args are considered part of the fn identifier
+        - Therefore, you can have two global fn vars of the same name
+            with different args as different vars
+    Defining a struct: 
+*/
+
+/* General function init */ 
+do sayHi name str {
+    print "Hi ", name
 }
 
-greet str name {
+do sayHi fname str, lname str {
+    print "Hi ", fname, " ", lname
+}
+
+/* Class init all-in-one (public by default, specify local to make priv)*/
+some local Person 
+has {
+    name str,
+    age int,
+    about str?
+} can {
+    /* does before a block prefixes functions */
+    do sayHi {
+        print "Hi!"
+    }
+
+    /* NOTE: procedure syntax */
+    /* <<var>> with <<args>> as <<type>> */
+    /* getName <<args>> -> <<type>> */
+    do getName self as str {
+        get self.name
+    }
+
+    /* Asterisk designates mutability */
+    do changeName self*, newName str {
+        set self.name to newName
+    } as str
+
+
+},
+will {
+    have dataAttrib
+    do procAttrib
+}
+will do procAttribute;
+
+Person has {
+    name text,
+    age int,
+    description text?
+};
+
+/* NOTE: Define a tuple class with one unnamed member */
+/*  - List of Person = List<Person> = ArrayList<Person> */
+People has list of Person;
+
+Party has {
+    date text?,
+    people list<Person>,
+}
+
+Town has int;
+
+City has {
+    name str,
+    people list<Person>
+}
+
+does greet name str as { 
     print "Hi ", name, "!";
 }
+greet name str does {
 
-greetPerson Person p {
+}
+
+/* Define self-reliant classes */
+Person does {
+
+    greet name str does {
+        print "hello"
+        print "how are you"
+    }
+}
+
+City does {
+
+    /* Include self by prefixing with in */
+    listPeople does {
+
+    }
+}
+
+greet with (name str)
+
+/* 
+    NOTE: Functions: defined with a does-(with)-as pattern
+        - General functions are defined does {{function}} (with) {{params}} as {{type}}
+*/
+
+/* NOTE Void function */
+does echo (str name) {
+
+}
+
+does returnNumber as int {
+
+}
+does echoName with (str name) as int {
+
+}
+
+/* can be does-with-as or does-as-with */
+does longFunctionName as str with 
+    name1 str,
+    name2 str,
+{
+
+}
+    
+
+does greetPerson with Person p {
     print "Hi ", p.name, "!";
 }
 
+/* Define a single method for Person */
 Person does greetPerson Person other {
     do greet other.name;
     do my.sayName;
@@ -34,29 +159,29 @@ Person does greetPerson Person other {
     print "I am ", do my.getAge, " years old";
 }
 
-Person does {
+Person {
 
-    init to str name, int age, as Person {
-        new Person { 
-            name name, 
-            age age, 
-            description none 
-        }
+    init name str, age int as Person {
+        Person 
+            name: name
+            age: age
+            description: none
     }
 
-    greetTwo to Person person1, Person person2 {
+    /* with means self-reliance */
+    greetTwo me, Person person1, Person person2 {
         do greet person1.name;
         do greet person2.name;
         do my.sayName;
         print "Hello all ", person1.name, person2.name;
     }
 
-    sayName {
+    sayName me {
 	    print "My name is ", my name;
     }
 
-    getName as int {
-	my.name
+    getName me as int {
+        my.name
     }
 
     getDescription as str? {

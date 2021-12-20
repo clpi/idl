@@ -16,10 +16,10 @@ pub fn build(b: *std.build.Builder) void {
     exe.setBuildMode(mode);
     exe.install();
 
-    const wasm = b.addExecutable("iz", "src/main.zig");
-    wasm.setTarget(std.zig.CrossTarget{ .cpu_arch = .wasm32, .os_tag = .wasi });
-    wasm.setBuildMode(mode);
-    wasm.install();
+    // const wasm = b.addExecutable("iz", "src/main.zig");
+    // wasm.setTarget(std.zig.CrossTarget{ .cpu_arch = .wasm32, .os_tag = .wasi });
+    // wasm.setBuildMode(mode);
+    // wasm.install();
 
     //const test_step = b.step("test", "Run all tests");
     //const tests = b.addTest("src/main.zig");

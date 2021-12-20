@@ -4,3 +4,21 @@
 phoenix_number is 142857;
 print(phoenix_number, "\n");
 
+/* NOTE: Defining, relating, and instantiating /*
+
+/* NOTE: DEFINING DATA STRUCTURE */
+Person has name str, age int, birthday str;
+Dog has {
+    name str,
+    breed Breed
+}
+
+/* NOTE: Defining an enumeration */
+Breed set {
+    retriever, 
+    lab,
+    poodle
+}
+
+
+Person does 
