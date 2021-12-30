@@ -1,4 +1,6 @@
 const std = @import("std");
+const print = std.log.debug;
+const Builder = std.build.Builder;
 
 pub fn build(b: *std.build.Builder) void {
     // Standard target options allows the person running `zig build` to choose

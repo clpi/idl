@@ -33,35 +33,50 @@ print "Helo there";
 */
 
 /* General function init */ 
-do sayHi name str {
+do sayHi name of str {
     print "Hi ", name
 }
 
-do sayHi fname str, lname str {
+do sayHi fname, lname of str, str {
     print "Hi ", fname, " ", lname
 }
 
+
+getName per of Person as str {
+    per :name
+}
+
+sayHi person : Person -> str {
+    person:name
+}
+
+greetEach p1, p2 of Person, Person as str {
+    p1  
+}
+
 /* Class init all-in-one (public by default, specify local to make priv)*/
-some local Person 
+/* brackets optional here */
+Person 
 has {
     :name str,
     :age int,
     :about str?
-} can {
+}
+can {
     /* does before a block prefixes functions */
-    do sayHi {
+    sayHi {
         print "Hi!"
     }
 
     /* NOTE: procedure syntax */
     /* <<var>> with <<args>> as <<type>> */
     /* getName <<args>> -> <<type>> */
-    do getName self as str {
+    getName self as str {
         get self:name
     }
 
     /* Asterisk designates mutability */
-    do changeName self*, newName str {
+    changeName self*, newName str {
         set self:name to newName
     } as str
 

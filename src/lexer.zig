@@ -1,10 +1,12 @@
 const std = @import("std");
+const t = std.testing;
 const tok = @import("./token.zig");
 const Token = tok.Token;
 const TokenVal = tok.TokenVal;
 const TokenType = tok.TokenType;
 
-pub fn lex(allocator: std.mem.Allocator, inp: []u8) !std.ArrayList(Token) {
+// pub fn lex(allocator: std.mem.Allocator, inp: []u8) !std.ArrayList(Token) {
+pub fn lex(allocator: std.mem.Allocator, inp: []const u8) !std.ArrayList(Token) {
     var tokens = std.ArrayList(Token).init(allocator);
     var lexer = Lexer.init(inp);
     while (lexer.next()) |ch| {
@@ -279,3 +281,7 @@ pub const LexerError = error{
     UnknownChar,
     InvalidNum,
 };
+
+test "parses_idents_ok" {
+    t.expectEqual(5, 5);
+}
