@@ -130,14 +130,14 @@ const Style = struct {
     style: ?Style,
     msg: comptime []const u8,
 
-    pub fn toString(self: Self) {
-        return  
+    
+    // pub fn toString(self: Self) {
 
-    }
-}
+    // }
+};
 
 const Fg = enum {
-    color: Color
+    color: Color,
 
     const Self = @This();
 
@@ -146,16 +146,16 @@ const Fg = enum {
 
     }
 
-    pub fn toString(self: Self, comptime s: []const u8) {
-        switch(self) {
-            .bblue => ""
+    // pub fn toString(self: Self, comptime s: []const u8) {
+        // switch(self) {
+            // .bblue => ""
 
-        }
+        // }
 
-    }
+    // }
 
-}
+};
 
-pub fn bblue(comptime s: []const u8) []const u8 {
+// pub fn bblue(comptime s: []const u8) []const u8 {
      
-}
+// };

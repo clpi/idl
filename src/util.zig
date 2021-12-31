@@ -31,8 +31,8 @@ pub fn printA(comptime s: []const u8, msg: anytype) void {
     std.debug.print(s, msg);
 }
 
-pub fn print(comptime s: []const u8, msg: ?[]const u8) void {
-    if (msg) |m| std.debug.print(s, .{m}) else std.debug.print(s, .{});
+pub fn print(comptime s: []const u8, msg: anytype) void {
+    std.debug.print(s, msg);
 }
 
 pub fn printTwo(comptime s: []const u8, m1: []const u8, m2: []const u8) void {
@@ -40,10 +40,15 @@ pub fn printTwo(comptime s: []const u8, m1: []const u8, m2: []const u8) void {
 }
 
 pub const Log = enum {
-    warn, msg, info, debug, err,
+    warn,
+    msg,
+    info,
+    debug,
+    err,
 
     const Self = @This();
 
     pub fn info(comptime s: []const u8, args: anytype) void {
+        std.log.info(s, args);
     }
-}
+};

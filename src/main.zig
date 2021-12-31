@@ -1,6 +1,6 @@
 const std = @import("std");
-const token = @import("token.zig");
-const parser = @import("./parser.zig");
+const token = @import("./lang/token.zig");
+const parser = @import("./lang/parser.zig");
 const cli = @import("./cli.zig");
 const wasm = std.wasm;
 

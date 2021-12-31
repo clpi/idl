@@ -1,4 +1,5 @@
 const std = @import("std");
+const builtin = @import("builtin");
 const print = std.log.debug;
 const Builder = std.build.Builder;
 
@@ -13,12 +14,12 @@ pub fn build(b: *std.build.Builder) void {
     // between Debug, ReleaseSafe, ReleaseFast, and ReleaseSmall.
     const mode = b.standardReleaseOptions();
 
-    const exe = b.addExecutable("dlang", "src/main.zig");
+    const exe = b.addExecutable("idl", "src/main.zig");
     exe.setTarget(target);
     exe.setBuildMode(mode);
     exe.install();
 
-    // const wasm = b.addExecutable("iz", "src/main.zig");
+    // const wasm = b.addExecutable("idl", "src/main.zig");
     // wasm.setTarget(std.zig.CrossTarget{ .cpu_arch = .wasm32, .os_tag = .wasi });
     // wasm.setBuildMode(mode);
     // wasm.install();

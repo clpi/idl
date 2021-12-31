@@ -1,5 +1,5 @@
 const std = @import("std");
-const col = @import("../term/colors.zig");
+// const col = @import("../term/colors.zig");
 // const util = @import("../util.zig");
 // const print = util.printA;
 
