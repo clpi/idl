@@ -32,8 +32,9 @@ pub fn print_usage() void {
         \\  - help  | h                        Print the usage info for iz  
         \\
         \\  ARGUMENTS
-        \\  --help <CMD>   | -h         An alternative way of getting help 
-        \\  --verbose      | -v              Enable verbose output for ops
+        \\  --help <CMD> | -h           An alternative way of getting help 
+        \\  --debug      | -d                Enable verbose output for ops
+        \\  --version    | -d                Print out the current version
         \\
     ;
     std.debug.print(greet_msg, .{});

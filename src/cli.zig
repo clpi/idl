@@ -22,7 +22,9 @@ pub const Cmd = enum {
         if (arg) |a| {
             if (eq(u8, a, "r") or (eq(u8, a, "run"))) {
                 cmd = Cmd.run;
-            } else if (eq(u8, a, "h") or (eq(u8, a, "help"))) {
+            } else if (eq(u8, a, "h") or eq(u8, a, "help") or
+                eq(u8, a, "--help") or eq(u8, a, "-h"))
+            {
                 cmd = Cmd.help;
             } else if (eq(u8, a, "b") or (eq(u8, a, "build"))) {
                 cmd = Cmd.build;

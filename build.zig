@@ -1,5 +1,6 @@
 const std = @import("std");
-const builtin = @import("builtin");
+const bi = std.builtin;
+const bu = std.build;
 const print = std.log.debug;
 const Builder = std.build.Builder;
 
