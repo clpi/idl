@@ -16,7 +16,7 @@ pub fn print_usage() void {
         \\      
         \\
     ;
-    const greet_msg = intro_msg ++
+    const usage_msg = intro_msg ++
         \\
         \\  USAGE: izi <SUBCMD> [TARGET] [--args]
         \\
@@ -37,7 +37,7 @@ pub fn print_usage() void {
         \\  --version    | -d                Print out the current version
         \\
     ;
-    std.debug.print(greet_msg, .{});
+    std.debug.print(usage_msg, .{});
 }
 
 const testing = std.testing;

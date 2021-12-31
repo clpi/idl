@@ -4,8 +4,10 @@ const space = ascii.spaces;
 const ccode = ascii.control_code;
 const unic = std.unicode;
 const os = std.os;
+const tos = std.os.termios;
 
 pub const Cursor = struct { x: usize, y: usize };
+
 pub const Terminal = struct {
     w: usize,
     h: usize,
