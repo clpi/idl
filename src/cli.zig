@@ -1,9 +1,9 @@
 const std = @import("std");
 const print = std.fmt.bufPrint;
 const util = @import("./util.zig");
-const Token = @import("./token.zig").Token;
-const lexer = @import("lexer.zig");
-const parser = @import("parser.zig");
+const Token = @import("./lang/token.zig").Token;
+const lexer = @import("./lang/lexer.zig");
+const parser = @import("./lang/parser.zig");
 
 pub fn procArgs(gpa: std.mem.Allocator) !void {
     var args = try std.process.argsAlloc(gpa);
@@ -14,13 +14,7 @@ pub fn procArgs(gpa: std.mem.Allocator) !void {
         util.print("Hello!\n", null);
         if (args.len == 1) {
             util.respOk("Welcome to the Idlang TOKENIZER REPL\n");
-            while (true) {
-                util.prompt();
-                const input = try util.readUntil(gpa, '\n');
-                const tok = try lexer.lex(gpa, input);
-                const tokens = try lexer.tokenListToString(gpa, tok);
-                _ = try std.io.getStdOut().writeAll(tokens);
-            }
+            _ = try repl();
         }
         switch (args.len) {
             1 => {},
@@ -34,6 +28,19 @@ pub fn procArgs(gpa: std.mem.Allocator) !void {
     }
 }
 
+pub fn repl(gpa: std.mem.Allocator) !void {
+    while (true) {
+        util.prompt();
+        const input = try util.readUntil(gpa, '\n');
+        const tok = try lexer.lex(gpa, input);
+        const tokens = try lexer.tokenListToString(gpa, tok);
+        _ = try std.io.getStdOut().writeAll(tokens);
+    }
+}
+test "repl works" {
+    _ = try repl();
+    std.testing.expect(true);
+}
 // 1 => {
 // std.log.debug("In progress! {s}", .{arg});
 // var stdout = try std.io.getStdOut();

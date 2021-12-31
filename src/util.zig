@@ -1,5 +1,4 @@
 const std = @import("std");
-const scope = std.sco
 const log = std.log;
 const math = std.math;
 const mem = std.mem;

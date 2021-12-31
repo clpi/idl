@@ -1,4 +1,5 @@
 const std = @import("std");
+const col = @import("../term/colors.zig");
 // const util = @import("../util.zig");
 // const print = util.printA;
 
@@ -30,6 +31,9 @@ pub fn print_usage() void {
         \\  - test  | t                            Test (kinda) your files 
         \\  - help  | h                        Print the usage info for iz  
         \\
+        \\  ARGUMENTS
+        \\  --help <CMD>   | -h         An alternative way of getting help 
+        \\  --verbose      | -v              Enable verbose output for ops
         \\
     ;
     std.debug.print(greet_msg, .{});
