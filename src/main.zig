@@ -2,7 +2,6 @@ const std = @import("std");
 const token = @import("./lang/token.zig");
 const parser = @import("./lang/parser.zig");
 const cli = @import("./cli.zig");
-const wasm = std.wasm;
 
 pub fn main() !void {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);

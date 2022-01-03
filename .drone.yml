@@ -1,9 +1,0 @@
-kind: pipeline
-type: docker
-name: idlang
-
-steps:
-- name: dist
-  image: zig
-  commands:
-    - zig test src/cli/help.zig

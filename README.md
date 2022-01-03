@@ -4,7 +4,7 @@
 - CLI and associated lib for idlang and idlspec, in zig (as an experiment and exercise for myself)
 
 ## Installing
-- `wapm install idl`
+- `wapm install clpi/idl`
     - For installing the wasm-built binary
 
 ## Commands

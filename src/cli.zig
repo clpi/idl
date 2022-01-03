@@ -7,6 +7,8 @@ const lexer = @import("./lang/lexer.zig");
 const parser = @import("./lang/parser.zig");
 const help = @import("./cli/help.zig");
 const sh = @import("./cli/sh.zig");
+const color = @import("./term/colors.zig");
+const Color = color.Color;
 
 pub const Cmd = enum {
     run,
@@ -82,6 +84,7 @@ pub fn repl(gpa: std.mem.Allocator) !void {
     while (true) {
         util.prompt();
         const input = try util.readUntil(gpa, '\n');
+        util.respOk("Tokenizing input...");
         const tok = try lexer.lex(gpa, input);
         const tokens = try lexer.tokenListToString(gpa, tok);
         _ = try std.io.getStdOut().writeAll(tokens);
