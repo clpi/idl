@@ -20,7 +20,7 @@ pub const Cmd = enum {
     const Self = @This();
 
     pub fn fromStr(arg: ?[]const u8) !Self {
-        var cmd = Cmd.shell;
+        var cmd = Cmd.help;
         if (arg) |a| {
             if (eq(u8, a, "r") or (eq(u8, a, "run"))) {
                 cmd = Cmd.run;
@@ -38,7 +38,7 @@ pub const Cmd = enum {
                 cmd = Cmd.help;
             }
         } else {
-            cmd = Cmd.shell;
+            cmd = Cmd.help;
         }
         return cmd;
     }
@@ -46,10 +46,10 @@ pub const Cmd = enum {
     pub fn exec(self: Self, gpa: std.mem.Allocator) !void {
         switch (self) {
             .run => try tokFile(gpa),
-            .shell => try repl(gpa),
+            .shell => try sh.repl(gpa),
             .help => help.print_usage(),
             .init => try tokFile(gpa),
-            .build => try repl(gpa),
+            .build => try sh.repl(gpa),
         }
     }
 };
@@ -63,7 +63,7 @@ pub fn procArgs(gpa: std.mem.Allocator) !void {
     for (args) |arg, arg_count| {
         util.print("Arg {s}: {d}!\n", .{ arg, arg_count });
         if (args.len == 1) {
-            cmd = Cmd.shell;
+            cmd = Cmd.help;
         } else {
             cmd = try Cmd.fromStr(arg);
         }
@@ -76,24 +76,12 @@ pub fn tokFile(gpa: std.mem.Allocator) !void {
     const test_file = @embedFile("../res/test.is");
     util.respOk("Welcome to the Idlang TOKENIZER REPL\n");
     const tok = try lexer.lex(gpa, test_file);
+    var psr = parser.Parser.init(gpa, tok);
+    try psr.parse();
     const tokens = try lexer.tokenListToString(gpa, tok);
     _ = try std.io.getStdOut().writeAll(tokens);
 }
 
-pub fn repl(gpa: std.mem.Allocator) !void {
-    while (true) {
-        util.prompt();
-        const input = try util.readUntil(gpa, '\n');
-        util.respOk("Tokenizing input...");
-        const tok = try lexer.lex(gpa, input);
-        const tokens = try lexer.tokenListToString(gpa, tok);
-        _ = try std.io.getStdOut().writeAll(tokens);
-    }
-}
-test "repl works" {
-    _ = try repl();
-    std.testing.expect(true);
-}
 // 1 => {
 // std.log.debug("In progress! {s}", .{arg});
 // var stdout = try std.io.getStdOut();

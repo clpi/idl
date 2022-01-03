@@ -1,6 +1,6 @@
 [package]
 name = "clpi/idl"
-version = "0.1.0"
+version = "0.1.0-alpha.1"
 description = "Building a toy lang in zig"
 license = "MIT"
 repository = "https://github.com/clpi/idl"

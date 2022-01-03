@@ -9,7 +9,7 @@ pub fn print_usage() void {
         \\                                                               
         \\              Oh wow, uh, this cli is... 
     ++ col.reset();
-    const intro_img = col.Color.bold(.cyan, .bright_fg) ++
+    const intro_img = col.Color.bold(.green, .bright_fg) ++
         \\
         \\              ___  ~~ ___    ___    ___        ~~        
         \\      ~~    ~/ _ `\  / __`\ / __`\~/ _ `\~       

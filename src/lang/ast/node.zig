@@ -1,2 +1,3 @@
-usingnamespace @import("../ast.zig");
-usingnamespace @import("./node.zig");
+const std = @import("std");
+
+pub const AstNode = struct {};

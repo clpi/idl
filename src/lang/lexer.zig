@@ -1,56 +1,60 @@
 const std = @import("std");
 const t = std.testing;
 const tok = @import("./token.zig");
+const ascii = std.ascii;
 const Token = tok.Token;
-const TokenVal = tok.TokenVal;
-const TokenType = tok.TokenType;
+const Kind = Token.Kind;
+const Val = Token.Val;
+const Op = Kind.Op;
+const Kw = Kind.Kw;
+const Block = Kind.Block;
 
 // pub fn lex(allocator: std.mem.Allocator, inp: []u8) !std.ArrayList(Token) {
 pub fn lex(allocator: std.mem.Allocator, inp: []const u8) !std.ArrayList(Token) {
-    var tokens = std.ArrayList(Token).init(allocator);
+    var tks = std.ArrayList(Token).init(allocator);
     var lexer = Lexer.init(inp);
     while (lexer.next()) |ch| {
         switch (ch) {
             ' ' => {},
-            '*' => try tokens.append(lexer.buildTokenType(.op_mul)),
-            '\n' => try tokens.append(lexer.buildTokenType(.newline)),
-            '.' => try tokens.append(lexer.buildTokenType(.op_period)),
-            '%' => try tokens.append(lexer.buildTokenType(.op_mod)),
-            '+' => try tokens.append(lexer.buildTokenType(.op_add)),
-            '-' => try tokens.append(lexer.buildTokenType(.op_sub)),
-            '?' => try tokens.append(lexer.buildTokenType(.op_question)),
-            '<' => try tokens.append(lexer.followed('=', .op_le, .op_lt)),
-            '>' => try tokens.append(lexer.followed('=', .op_ge, .op_gt)),
-            '=' => try tokens.append(lexer.followed('=', .op_eq, .op_assign)),
-            '!' => try tokens.append(lexer.followed('=', .op_ne, .kw_not)),
-            '(' => try tokens.append(lexer.buildTokenType(.lpar)),
-            ')' => try tokens.append(lexer.buildTokenType(.rpar)),
-            '{' => try tokens.append(lexer.buildTokenType(.lbrace)),
-            '}' => try tokens.append(lexer.buildTokenType(.rbrace)),
-            ';' => try tokens.append(lexer.buildTokenType(.semicolon)),
-            ':' => try tokens.append(lexer.buildTokenType(.colon)),
-            ',' => try tokens.append(lexer.buildTokenType(.comma)),
-            '&' => try tokens.append(try lexer.consec('&', .kw_and)),
-            '|' => try tokens.append(try lexer.consec('|', .kw_or)),
+            '*' => try tks.append(lexer.buildOp(.mul)),
+            '\n' => try tks.append(lexer.buildOp(.newline)),
+            '.' => try tks.append(lexer.buildOp(.period)),
+            '%' => try tks.append(lexer.buildOp(.mod)),
+            '+' => try tks.append(lexer.buildOp(.add)),
+            '-' => try tks.append(lexer.buildOp(.sub)),
+            '?' => try tks.append(lexer.buildOp(.ques)),
+            '<' => try tks.append(lexer.followed('=', Kind{ .op = .le }, Kind{ .op = .lt })),
+            '>' => try tks.append(lexer.followed('=', Kind{ .op = .ge }, Kind{ .op = .gt })),
+            '=' => try tks.append(lexer.followed('=', Kind{ .op = .eq_comp }, Kind{ .op = .assign })),
+            '!' => try tks.append(lexer.followed('=', Kind{ .op = .ne }, Kind{ .op = .excl })),
+            '(' => try tks.append(lexer.buildBlock(.lpar)),
+            ')' => try tks.append(lexer.buildBlock(.rpar)),
+            '{' => try tks.append(lexer.buildBlock(.lbrace)),
+            '}' => try tks.append(lexer.buildBlock(.rbrace)),
+            ';' => try tks.append(lexer.buildOp(.semicolon)),
+            ':' => try tks.append(lexer.buildOp(.colon)),
+            ',' => try tks.append(lexer.buildOp(.comma)),
+            '&' => try tks.append(try lexer.consec('&', Kind{ .op = .amp })),
+            '|' => try tks.append(try lexer.consec('|', Kind{ .op = .pipe })),
             '/' => {
-                if (try lexer.divOrComment()) |token| try tokens.append(token);
+                if (try lexer.divOrComment()) |token| try tks.append(token);
             },
-            '_', 'a'...'z', 'A'...'Z' => try tokens.append(try lexer.identOrKw()),
-            '"' => try tokens.append(try lexer.strLiteral()),
-            '0'...'9' => try tokens.append(try lexer.intLiteral()),
-            '\'' => try tokens.append(try lexer.intChar()),
+            '_', 'a'...'z', 'A'...'Z' => try tks.append(try lexer.identOrKw()),
+            '"' => try tks.append(try lexer.strLiteral()),
+            '0'...'9' => try tks.append(try lexer.intLiteral()),
+            '\'' => try tks.append(try lexer.intChar()),
             else => {},
         }
     }
-    try tokens.append(lexer.buildTokenType(.eof));
-    return tokens;
+    try tks.append(lexer.buildKind(Token.Kind.eof));
+    return tks;
 }
 
 pub fn tokenListToString(allocator: std.mem.Allocator, token_list: std.ArrayList(Token)) ![]u8 {
     var result = std.ArrayList(u8).init(allocator);
     var w = result.writer();
     for (token_list.items) |token| {
-        const common_args = .{ token.line, token.col, token.ttype.toString() };
+        const common_args = .{ token.line, token.col, token.kind.toStr() };
         if (token.val) |value| {
             const init_fmt = "{d:>5}{d:>7} {s:<15}";
             switch (value) {
@@ -59,6 +63,8 @@ pub fn tokenListToString(allocator: std.mem.Allocator, token_list: std.ArrayList
                     init_fmt ++ "{s}\n",
                     common_args ++ .{str},
                 )),
+                .byte => |by| _ = try w.write(try std.fmt.allocPrint(allocator, init_fmt ++ "{d}\n", common_args ++ .{by})),
+                .float => |fl| _ = try w.write(try std.fmt.allocPrint(allocator, init_fmt ++ "{d}\n", common_args ++ .{fl})),
                 .intl => |i| _ = try w.write(try std.fmt.allocPrint(
                     allocator,
                     init_fmt ++ "{d}\n",
@@ -95,8 +101,21 @@ pub const Lexer = struct {
         return Token{ .line = self.line, .col = self.col };
     }
 
-    pub fn buildTokenType(self: Self, ttype: TokenType) Token {
-        return Token{ .line = self.line, .col = self.col, .ttype = ttype };
+    pub fn buildKind(self: Self, kind: Kind) Token {
+        return Token{ .line = self.line, .col = self.col, .kind = kind };
+    }
+
+    pub fn buildOp(self: Self, op: Kind.Op) Token {
+        return Token{ .line = self.line, .col = self.col, .kind = Kind{ .op = op } };
+    }
+    pub fn buildKw(self: Self, kw: Kind.Kw) Token {
+        return Token{ .line = self.line, .col = self.col, .kind = Kind{ .kw = kw } };
+    }
+    pub fn buildBlock(self: Self, block: Kind.Block) Token {
+        return Token{ .line = self.line, .col = self.col, .kind = Kind{ .block = block } };
+    }
+    pub fn buildType(self: Self, @"type": Kind.@"Type") Token {
+        return Token{ .line = self.line, .col = self.col, .kind = Kind{ .type = @"type" } };
     }
 
     pub fn current(self: Self) u8 {
@@ -141,7 +160,7 @@ pub const Lexer = struct {
                 return LexerError.EofInComment;
             }
         }
-        outp.ttype = .op_div;
+        outp.kind = Kind{ .op = Op.div };
         return outp;
     }
 
@@ -156,17 +175,17 @@ pub const Lexer = struct {
         }
         const p_f = self.pos + 1;
         var st = self.inp[p_i..p_f];
-        if (TokenType.isKw(st)) |ttype| {
-            outp.ttype = ttype;
+        if (Kind.isKw(st)) |kwd| {
+            outp.kind = Kind{ .kw = kwd };
         } else {
-            outp.ttype = .ident;
-            outp.val = TokenVal{ .str = st };
+            outp.kind = Kind{ .type = Kind.@"Type"{ .ident = st } };
+            outp.val = Val{ .str = st };
         }
         return outp;
     }
 
     pub fn strLiteral(self: *Self) !Token {
-        var outp = self.buildTokenType(.str);
+        var outp = self.buildType(Kind.@"Type"{ .str = "" });
         const p_i = self.pos;
         while (self.next()) |ch| {
             switch (ch) {
@@ -184,27 +203,27 @@ pub const Lexer = struct {
             return LexerError.EofInStr;
         }
         const p_f = self.pos + 1;
-        outp.val = TokenVal{ .str = self.inp[p_i..p_f] };
+        outp.val = Val{ .str = self.inp[p_i..p_f] };
         return outp;
     }
 
-    pub fn followed(self: *Self, by: u8, pos_type: TokenType, neg_type: TokenType) Token {
+    pub fn followed(self: *Self, by: u8, pos_type: Kind, neg_type: Kind) Token {
         var outp = self.buildToken();
         if (self.peek()) |ch| {
             if (ch == by) {
                 _ = self.next();
-                outp.ttype = pos_type;
+                outp.kind = pos_type;
             } else {
-                outp.ttype = neg_type;
+                outp.kind = neg_type;
             }
         } else {
-            outp.ttype = neg_type;
+            outp.kind = neg_type;
         }
         return outp;
     }
 
-    pub fn consec(self: *Self, by: u8, ttype: TokenType) LexerError!Token {
-        const outp = self.buildTokenType(ttype);
+    pub fn consec(self: *Self, by: u8, kind: Kind) LexerError!Token {
+        const outp = self.buildKind(kind);
         if (self.peek()) |ch| {
             if (ch == by) {
                 _ = self.next();
@@ -218,7 +237,7 @@ pub const Lexer = struct {
     }
 
     pub fn intLiteral(self: *Self) LexerError!Token {
-        var outp = self.buildTokenType(.int);
+        var outp = self.buildKind(Kind{ .type = Kind.@"Type"{ .int = 0 } });
         const p_i = self.pos;
         while (self.peek()) |ch| {
             switch (ch) {
@@ -232,7 +251,7 @@ pub const Lexer = struct {
             }
         }
         const p_f = self.pos + 1;
-        outp.val = TokenVal{
+        outp.val = Val{
             .intl = std.fmt.parseInt(i32, self.inp[p_i..p_f], 10) catch {
                 return LexerError.InvalidNum;
             },
@@ -245,13 +264,13 @@ pub const Lexer = struct {
     }
 
     pub fn intChar(self: *Self) LexerError!Token {
-        var outp = self.buildTokenType(.int);
+        var outp = self.buildType(Kind.@"Type"{ .int = 0 });
         switch (try self.nextOrEmpty()) {
             '\'', '\n' => return LexerError.EmptyCharConst,
             '\\' => {
                 switch (try self.nextOrEmpty()) {
-                    'n' => outp.val = TokenVal{ .intl = '\n' },
-                    '\\' => outp.val = TokenVal{ .intl = '\\' },
+                    'n' => outp.val = Val{ .intl = '\n' },
+                    '\\' => outp.val = Val{ .intl = '\\' },
                     else => return LexerError.EmptyCharConst,
                 }
                 switch (try self.nextOrEmpty()) {
@@ -260,7 +279,7 @@ pub const Lexer = struct {
                 }
             },
             else => {
-                outp.val = TokenVal{ .intl = self.current() };
+                outp.val = Val{ .intl = self.current() };
                 switch (try self.nextOrEmpty()) {
                     '\'' => {},
                     else => return LexerError.MulticharConst,

@@ -23,15 +23,12 @@ pub const Style = enum(u8) {
     blink = 5,
     reverse = 6,
     hidden = 7,
-    eight = 8,
-    nine = 9,
     default,
 
     const Self = @This();
 
     pub fn toCode(self: Self) []const u8 {
         return switch (self) {
-            .default => "m",
             .reset => ";0m",
             .bold => ";1m",
             .dim => ";2m",
@@ -40,8 +37,7 @@ pub const Style = enum(u8) {
             .blink => ";5m",
             .reverse => ";6m",
             .hidden => ";7m",
-            .eight => ";8m",
-            .nine => ";9m",
+            .default => "m",
         };
     }
 
@@ -69,29 +65,47 @@ pub const FmtOpts = struct {
 };
 
 pub const StyledStr = struct {
-    buf: []u8,
-    style: ?Style,
-    args: anytype,
+    str: []u8,
+    style: Style = Style.default,
+    color: Color = Color.white,
+    spec: Spec = Spec.default(),
+    args: anytype = .{},
 
     const Self = @This();
 
-    pub fn init(buf: []const u8, args: anytype) []const u8 {
+    pub fn init(buf: []const u8, args: anytype, style: ?Style, clr: ?Color, spec: ?Spec) Self {
         return Self{
             .buf = buf,
             .args = args,
+            .color = clr orelse Color.white,
+            .spec = spec orelse Spec.normal_fg,
+            .style = style orelse Style.default,
         };
     }
 
+    pub fn withSpec(self: Self, spec: Spec) Self {
+        self.spec = spec;
+        return self;
+    }
+    pub fn withStyle(self: Self, style: Style) Self {
+        self.style = style;
+        return self;
+    }
+
     pub fn toString(self: Self) []const u8 {
-        return self.color.fmtParams(self.loc, self.bri) ++ self.buf ++ "m";
+        return self.color.styled(self.style, self.spec);
     }
 
     pub fn withBold(self: Self) []const u8 {
-        return self.color.fmtParams(self.loc, self.bri) ++ self.buf ++ "1;m";
+        return self.color.bold(self.spec);
     }
 
     pub fn print(self: Self) void {
         std.debug.print(self.buf, self.args);
+    }
+
+    pub fn write(self: Self, file: std.fs.File) !void {
+        _ = try file.writer().writeAll(self.toString());
     }
 };
 

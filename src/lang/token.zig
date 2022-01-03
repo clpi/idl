@@ -1,284 +1,481 @@
 const std = @import("std");
+const eq = std.mem.eql;
+const meta = std.meta;
+const mem = std.mem;
+const enums = std.enums;
+const fieldNames = meta.fieldNames;
 
-pub const TokenType = enum {
-    unknown,
-    op_mul,
-    op_div,
-    op_mod,
-    op_add,
-    op_sub,
-    op_neg,
-    op_gt,
-    op_lt,
-    op_ge,
-    op_period,
-    op_question,
-    op_le,
-    op_arrow,
-    op_eq,
-    op_ne,
-    op_assign,
-    lpar,
-    rpar,
-    lbrace,
-    rbrace,
-    semicolon,
-    comma,
-    colon,
-    newline,
-    kw_not,
-    kw_so,
-    kw_is,
-    kw_can,
-    kw_to,
-    kw_and,
-    kw_or,
-    kw_does,
-    kw_if,
-    kw_in,
-    kw_use,
-    kw_out,
-    kw_do,
-    kw_with,
-    kw_my,
-    kw_return,
-    kw_get,
-    kw_some,
-    kw_self,
-    kw_else,
-    kw_while,
-    kw_print,
-    kw_has,
-    kw_as,
-    kw_of,
-    kw_by,
-    kw_let,
-    kw_like,
-    kw_type,
-    kw_me,
-    kw_loop,
-    kw_then,
-    kw_have,
-    kw_put,
-    kw_set,
-    kw_for,
-    kw_true,
-    kw_false,
-    kw_be,
-    kw_will,
-    kw_all,
-    kw_any,
-    kw_local,
-    kw_str,
-    kw_list,
-    kw_float,
-    kw_int,
-    ident,
-    list,
-    int,
-    float,
-    str,
-    eof,
-
-    pub fn isKw(inp: []const u8) ?TokenType {
-        if (std.mem.eql(u8, inp, "print")) {
-            return .kw_print;
-        } else if (std.mem.eql(u8, inp, "put")) {
-            return .kw_put;
-        } else if (std.mem.eql(u8, inp, "self")) {
-            return .kw_self;
-        } else if (std.mem.eql(u8, inp, "if")) {
-            return .kw_if;
-        } else if (std.mem.eql(u8, inp, "else")) {
-            return .kw_else;
-        } else if (std.mem.eql(u8, inp, "as")) {
-            return .kw_as;
-        } else if (std.mem.eql(u8, inp, "does")) {
-            return .kw_does;
-        } else if (std.mem.eql(u8, inp, "do")) {
-            return .kw_do;
-        } else if (std.mem.eql(u8, inp, "get")) {
-            return .kw_get;
-        } else if (std.mem.eql(u8, inp, "while")) {
-            return .kw_while;
-        } else if (std.mem.eql(u8, inp, "has")) {
-            return .kw_has;
-        } else if (std.mem.eql(u8, inp, "have")) {
-            return .kw_have;
-        } else if (std.mem.eql(u8, inp, "and")) {
-            return .kw_and;
-        } else if (std.mem.eql(u8, inp, "so")) {
-            return .kw_so;
-        } else if (std.mem.eql(u8, inp, "with")) {
-            return .kw_with;
-        } else if (std.mem.eql(u8, inp, "or")) {
-            return .kw_or;
-        } else if (std.mem.eql(u8, inp, "my")) {
-            return .kw_my;
-        } else if (std.mem.eql(u8, inp, "is")) {
-            return .kw_is;
-        } else if (std.mem.eql(u8, inp, "some")) {
-            return .kw_some;
-        } else if (std.mem.eql(u8, inp, "not")) {
-            return .kw_not;
-        } else if (std.mem.eql(u8, inp, "let")) {
-            return .kw_let;
-        } else if (std.mem.eql(u8, inp, "can")) {
-            return .kw_can;
-        } else if (std.mem.eql(u8, inp, "me")) {
-            return .kw_me;
-        } else if (std.mem.eql(u8, inp, "will")) {
-            return .kw_will;
-        } else if (std.mem.eql(u8, inp, "for")) {
-            return .kw_for;
-        } else if (std.mem.eql(u8, inp, "type")) {
-            return .kw_type;
-        } else if (std.mem.eql(u8, inp, "like")) {
-            return .kw_like;
-        } else if (std.mem.eql(u8, inp, "of")) {
-            return .kw_of;
-        } else if (std.mem.eql(u8, inp, "by")) {
-            return .kw_by;
-        } else if (std.mem.eql(u8, inp, "in")) {
-            return .kw_in;
-        } else if (std.mem.eql(u8, inp, "use")) {
-            return .kw_use;
-        } else if (std.mem.eql(u8, inp, "out")) {
-            return .kw_out;
-        } else if (std.mem.eql(u8, inp, "to")) {
-            return .kw_to;
-        } else if (std.mem.eql(u8, inp, "set")) {
-            return .kw_set;
-        } else if (std.mem.eql(u8, inp, "all")) {
-            return .kw_all;
-        } else if (std.mem.eql(u8, inp, "any")) {
-            return .kw_any;
-        } else if (std.mem.eql(u8, inp, "then")) {
-            return .kw_then;
-        } else if (std.mem.eql(u8, inp, "false")) {
-            return .kw_false;
-        } else if (std.mem.eql(u8, inp, "return")) {
-            return .kw_return;
-        } else if (std.mem.eql(u8, inp, "true")) {
-            return .kw_true;
-        } else if (std.mem.eql(u8, inp, "be")) {
-            return .kw_be;
-        } else if (std.mem.eql(u8, inp, "loop")) {
-            return .kw_loop;
-        } else if (std.mem.eql(u8, inp, "local")) {
-            return .kw_local;
-        } else if (std.mem.eql(u8, inp, "int")) {
-            return .kw_int;
-        } else if (std.mem.eql(u8, inp, "str")) {
-            return .kw_str;
-        } else if (std.mem.eql(u8, inp, "list")) {
-            return .kw_list;
-        } else if (std.mem.eql(u8, inp, "float")) {
-            return .kw_float;
-        } else return null;
-    }
-
-    pub fn fromString(inp: []const u8) ?TokenType {
-        inline for (std.meta.fields(TokenType)) |field| {
-            if (std.mem.eql(u8, inp, field.name)) {
-                return @field(TokenType, field.name);
-            }
-        }
-        return null;
-    }
-
-    pub fn toString(self: @This()) []const u8 {
-        return switch (self) {
-            .unknown => "unknown",
-            .op_mul => "op_mul",
-            .op_div => "op_div",
-            .op_mod => "op_mod",
-            .op_add => "op_add",
-            .op_sub => "op_sub",
-            .op_neg => "op_neg",
-            .op_gt => "op_gt",
-            .op_ge => "op_ge",
-            .op_le => "op_le",
-            .op_lt => "op_lt",
-            .op_eq => "op_eq",
-            .op_question => "op_question",
-            .op_period => "op_period",
-            .op_ne => "op_ne",
-            .op_assign => "op_assign",
-            .lpar => "lpar",
-            .rpar => "rpar",
-            .newline => "newline",
-            .lbrace => "lbrace",
-            .rbrace => "rbrace",
-            .semicolon => "semicolon",
-            .colon => "colon",
-            .comma => "comma",
-            .kw_not => "kw_not",
-            .kw_is => "kw_is",
-            .kw_as => "kw_as",
-            .kw_does => "kw_does",
-            .kw_so => "kw_so",
-            .kw_all => "kw_all",
-            .kw_any => "kw_any",
-            .kw_can => "kw_can",
-            .kw_some => "kw_some",
-            .kw_and => "kw_and",
-            .kw_will => "kw_will",
-            .kw_have => "kw_have",
-            .kw_has => "kw_has",
-            .kw_my => "kw_my",
-            .kw_int => "kw_int",
-            .kw_float => "kw_float",
-            .kw_str => "kw_str",
-            .kw_list => "kw_list",
-            .kw_me => "kw_me",
-            .kw_loop => "kw_loop",
-            .kw_self => "kw_self",
-            .kw_return => "kw_return",
-            .kw_get => "kw_get",
-            .kw_let => "kw_let",
-            .kw_do => "kw_do",
-            .kw_then => "kw_then",
-            .kw_be => "kw_be",
-            .kw_with => "kw_with",
-            .kw_for => "kw_for",
-            .kw_or => "kw_or",
-            .kw_if => "kw_if",
-            .kw_of => "kw_of",
-            .kw_by => "kw_by",
-            .kw_like => "kw_like",
-            .kw_local => "kw_local",
-            .kw_type => "kw_type",
-            .op_arrow => "op_arrow",
-            .kw_else => "kw_else",
-            .kw_while => "kw_while",
-            .kw_print => "kw_print",
-            .kw_to => "kw_to",
-            .kw_set => "kw_set",
-            .kw_in => "kw_in",
-            .kw_use => "kw_in",
-            .kw_out => "kw_out",
-            .kw_put => "kw_put",
-            .ident => "ident",
-            .str => "str",
-            .kw_true => "kw_true",
-            .kw_false => "kw_false",
-            .int => "int",
-            .list => "list",
-            .float => "float",
-            .eof => "eof",
-        };
-    }
-};
-
-pub const TokenVal = union(enum) {
-    intl: i32,
-    str: []const u8,
+pub const TokenError = error{
+    UnexpectedToken,
 };
 
 pub const Token = struct {
     line: usize,
     col: usize,
-    ttype: TokenType = .unknown,
-    val: ?TokenVal = null,
+    kind: Token.Kind = .unknown,
+    val: ?Token.Val = null,
+
+    const Self = @This();
+
+    pub const Kind = union(enum(u8)) {
+        op: Token.Kind.Op,
+        type: Token.Kind.@"Type",
+        kw: Token.Kind.Kw,
+        block: Token.Kind.Block,
+        unknown,
+        eof,
+
+        pub fn op(oper: Token.Kind.Op) Token.Kind {
+            return Kind{ .op = oper };
+        }
+        pub fn kwd(kw: Kw) Kind {
+            return Kind{ .kw = kw };
+        }
+
+        pub const isKw = Kw.isKw;
+        pub const isOp = Op.isOp;
+        pub const isBool = @"Type".isBool;
+        pub const isBlock = Block.isBlock;
+        pub const isType = @"Type".isType;
+
+        pub fn toStr(self: Token.Kind) []const u8 {
+            return switch (self) {
+                .eof => "eof",
+                .unknown => "unknown",
+                .op => |opt| Token.Kind.Op.toStr(opt),
+                .kw => |kwt| Token.Kind.Kw.toStr(kwt),
+                .type => |tyt| tyt.toStr(),
+                .block => |blt| blt.toStr(),
+            };
+        }
+
+        pub const Op = enum(u8) {
+            at,
+            amp,
+            dol,
+            pound,
+            caret,
+            tilde,
+            bslash,
+            pipe,
+            mul,
+            div,
+            mod,
+            add,
+            sub,
+            comma,
+            gt,
+            lt,
+            ques,
+            semicolon,
+            colon,
+            newline,
+            excl,
+            assign,
+            period,
+            neg,
+            add_eq,
+            div_eq,
+            sub_eq,
+            mul_eq,
+            ln_doc_cmt,
+            pointer,
+            ref,
+            assoc,
+            range,
+            comment,
+            access,
+            le,
+            ge,
+            farrow,
+            barrow,
+            eq_comp,
+            ne,
+            query,
+            double_gt,
+            double_lt,
+            defn,
+            open_lt,
+            close_lt,
+
+            pub const range_sym = "..";
+            pub const le_sym = "<=";
+            pub const ge_sym = ">=";
+            pub const farrow_sym = "->";
+            pub const barrow_sym = "<-";
+            pub const eq_compn_sym = "==";
+            pub const query_sym = "=?";
+            pub const nen_sym = "!=";
+            pub const defn_sym = ":=";
+            pub const commentn_sym = "--";
+            pub const sub_eq_sym = "-=";
+            pub const div_eq_sym = "/=";
+            pub const add_eq_sym = "+=";
+            pub const mul_eq_sym = "*=";
+            pub const assoc_sym = "++";
+            pub const double_gt_sym = ">>";
+            pub const double_lt_sym = "<<";
+            pub const line_doc_cmt = "-!";
+
+            pub const Op = @This();
+
+            pub fn toStr(oper: Token.Kind.Op) []const u8 {
+                return @tagName(oper);
+            }
+
+            pub fn isCharOp(inp: u8) ?Token.Kind.Op {
+                inline for (enums.values(Token.Kind.Op)) |value| {
+                    if (value == inp) {
+                        return @intToEnum(Token.Kind.Op, value);
+                    }
+                }
+                return null;
+            }
+
+            pub fn isOp(comptime inp: []const u8) ?Token.Kind.Op {
+                return switch (inp[0]) {
+                    ' ' => null,
+                    '-' => comptime switch (inp[1]) {
+                        '>' => .farrow,
+                        '-' => .comment,
+                        '=' => .sub_eq,
+                        '!' => .ln_doc_cmt,
+                        else => .sub,
+                    },
+                    '.' => comptime switch (inp[1]) {
+                        '.' => .range,
+                        '_', 'a'...'z', 'A'...'Z', '0'...'9' => .access,
+                        else => .period,
+                    },
+                    '*' => switch (inp[1]) {
+                        '=' => .mul_eq,
+                        '_', 'a'...'z', 'A'...'Z', '0'...'9' => .pointer,
+                        else => .mul,
+                    },
+                    '\n' => .newline,
+                    ',' => .comma,
+                    '%' => .mod,
+                    '+' => switch (inp[1]) {
+                        '=' => .add_eq,
+                        '+' => .assoc,
+                        else => .add,
+                    },
+                    '?' => .ques,
+                    '<' => switch (inp[1]) {
+                        '<' => .double_lt,
+                        '=' => .le,
+                        '-' => .barrow,
+                        'a'...'z', 'A'...'Z', '0'...'9', '_' => .open_lt,
+                        else => .lt,
+                    },
+                    '>' => switch (inp[1]) {
+                        '>' => .double_gt,
+                        '=' => .ge,
+                        else => .gt,
+                    },
+                    '=' => switch (inp[1]) {
+                        '=' => .eq,
+                        '?' => .query,
+                        else => .assign,
+                    },
+                    '!' => switch (inp[1]) {
+                        '=' => .ne,
+                        else => .excl,
+                    },
+                    ';' => .semicolon,
+                    ':' => switch (inp[1]) {
+                        '=' => .def,
+                        else => .colon,
+                    },
+                    '&' => .amp,
+                    '|' => .pipe,
+                    '/' => switch (inp[1]) {
+                        '=' => .div_eq,
+                        '/' => .comment,
+                        else => null,
+                    },
+                    '$' => .dol,
+                    '#' => .pound,
+                    '@' => .at,
+                    '^' => .caret,
+                    '\\' => .bslash,
+                    else => null,
+                };
+            }
+        };
+
+        pub const Kw = enum {
+            not,
+            so,
+            is,
+            can,
+            to,
+            @"and",
+            @"or",
+            does,
+            @"if",
+            in,
+            use,
+            out,
+            do,
+            with,
+            my,
+            @"return",
+            get,
+            some,
+            self,
+            @"else",
+            @"while",
+            print,
+            has,
+            as,
+            of,
+            by,
+            let,
+            like,
+            type,
+            me,
+            loop,
+            hen,
+            have,
+            put,
+            set,
+            @"for",
+            be,
+            will,
+            all,
+            any,
+            local,
+
+            pub const Kw = @This();
+
+            pub fn isKw(inp: []const u8) ?Token.Kind.Kw {
+                inline for (comptime fieldNames(Token.Kind.Kw)) |field, i| {
+                    if (eq(u8, inp, field)) {
+                        return @intToEnum(Token.Kind.Kw, i);
+                    }
+                }
+                return null;
+            }
+
+            pub fn toStr(kword: Token.Kind.Kw) []const u8 {
+                return @tagName(kword);
+            }
+        };
+
+        pub const @"Type" = union(enum) {
+            pub const Typ = @This();
+
+            const tv = .{ "true", "True", "TRUE" };
+            const fv = .{ "false", "False", "FALSE" };
+
+            list,
+            ident: []const u8,
+            int: usize,
+            float: f32,
+            byte: u8,
+            str: []const u8,
+            bool: bool,
+
+            pub fn isType(ty: []const u8) TokenError!?Token.Kind.@"Type" {
+                var squote = false;
+                var dquote = false;
+                var bracket = false;
+                var braces = false;
+                var wd: [32]u8 = undefined;
+                var ct = 0;
+                while (ty.next()) |ch| {
+                    if (ct == 0) {
+                        switch (ch) {
+                            '\'' => squote = true,
+                            '"' => dquote = true,
+                            '[' => bracket = true,
+                            '{' => braces = true,
+                            'A'...'Z', 'a'...'z', '_', '0'...'9' => {
+                                wd.append(ch);
+                                continue;
+                            },
+                            else => return TokenError.UnexpectedToken,
+                        }
+                    } else {
+                        switch (ch) {
+                            '\'' => if (squote) {
+                                return Token.Kind.@"Type"{ .byte = wd };
+                            } else {
+                                return Token.Kind.@"Type"{ .ident = wd };
+                            },
+                            '"' => if (dquote) {
+                                return Token.Kind.@"Type"{ .str = wd };
+                            } else {
+                                dquote = true;
+                            },
+                            '}' => if (bracket) {
+                                return Token.Kind.@"Type"{ .list = wd };
+                            } else {
+                                dquote = true;
+                            },
+                            '}' => if (bracket) {
+                                return Token.Kind.@"Type"{ .list = wd };
+                            } else {
+                                dquote = true;
+                            },
+                            'A'...'Z', 'a'...'z', '_', '0'...'9' => {
+                                wd.append(ch);
+                                continue;
+                            },
+                            ' ' => return Token.Kind.@"Type"{ .ident = wd },
+                            else => return TokenError.UnexpectedToken,
+                        }
+                    }
+                    ct += 1;
+                }
+                switch (ty[0]) {
+                    'A'...'Z', 'a'...'z', '_', '0'...'9' => {
+                        return Token.Kind.@"Type"{ .ident = ty };
+                    },
+                }
+            }
+
+            pub fn toStr(ty: Token.Kind.@"Type") []const u8 {
+                return switch (ty) {
+                    .ident => |_| std.meta.tagName(.ident),
+                    .byte => |_| std.meta.tagName(.byte),
+                    .list => std.meta.tagName(.list),
+                    .int => |_| std.meta.tagName(.int),
+                    .float => |_| std.meta.tagName(.float),
+                    .str => |_| std.meta.tagName(.str),
+                    .bool => |bln| switch (bln) {
+                        true => "bool:t",
+                        false => "bool:f",
+                    },
+                };
+            }
+
+            pub fn isBool(inp: []const u8) ?Token.Kind.@"Type" {
+                inline for (tv) |tval| {
+                    if (eq(u8, inp, tval)) {
+                        return Token.Kind.@"Type"{ .bool = true };
+                    }
+                }
+                inline for (fv) |fval| {
+                    if (eq(u8, inp, fval)) {
+                        return Token.Kind.@"Type"{ .bool = true };
+                    }
+                }
+                return null;
+            }
+        };
+
+        pub const Block = enum(u8) {
+            lpar = '(',
+            rpar = ')',
+            lbrace = '{',
+            rbrace = '}',
+            lbracket = '[',
+            rbracket = ']',
+            squote = '\'',
+            dquote = '"',
+            btick = '`',
+            lcblock, //comment left block
+            rcblock,
+
+            pub const bcomment = .{ "--|", "|--" };
+            pub const dcomment = .{ "--!", "!--" };
+
+            pub const Block = @This();
+
+            pub fn isBlock(inp: []const u8) ?Token.Kind.Block {
+                return switch (inp[0]) {
+                    '(' => .lpar,
+                    ')' => .rpar,
+                    '[' => .lbracket,
+                    ']' => .lbracket,
+                    '{' => .lbrace,
+                    '}' => .rbrace,
+                    '\'' => .squote,
+                    '"' => .dquote,
+                    '`' => .btick,
+                    '-' => {
+                        if (eq(u8, bcomment[0], inp)) {
+                            return .lcblock;
+                        } else if (eq(u8, bcomment[1], inp)) {
+                            return .rcblock;
+                        } else {
+                            return null;
+                        }
+                    },
+                    else => null,
+                };
+            }
+
+            pub fn toStr(bl: Token.Kind.Block) []const u8 {
+                return @tagName(bl);
+            }
+
+            pub const Rel = enum(u8) { stop = 0, start = 1 };
+        };
+
+        pub fn fromString(inp: []const u8) ?Self.Kind {
+            inline for (std.meta.fields(Self.Kind)) |field| {
+                if (eq(u8, inp, field.name)) {
+                    return @field(Self.Kind, field.name);
+                }
+            }
+            return null;
+        }
+    };
+
+    pub const Val = union(enum) {
+        intl: i32,
+        float: f32,
+        byte: u8,
+        str: []const u8,
+    };
 };
+
+const expect = std.testing.expect;
+const expectStrEq = std.testing.expectEqualStrings;
+
+test "Token.Kind.Kw toStr" {
+    const kw = Token.Kind{ .kw = Token.Kind.Kw.all };
+    const kwstr = kw.toStr();
+    try expectStrEq("all", kwstr);
+}
+
+test "Token.Kind.Kw isKw" {
+    const kw = "does";
+    const tok = Token.Kind.Kw.isKw(kw);
+    if (tok) |tk| {
+        std.log.warn("{s}", .{tk.toStr()});
+        try expect(true);
+    } else {
+        try expect(false);
+    }
+}
+
+test "Token.Kind.Block isBlock" {
+    const bcmt = "--|";
+    const tok = Token.Kind.isBlock(bcmt);
+    if (tok) |tk| {
+        std.log.warn("{s}", .{tk.toStr()});
+        try expect(true);
+    } else {
+        try expect(false);
+    }
+}
+
+test "Token.Kind.Op isOp" {
+    const dcmt = "-!";
+    const tok = Token.Kind.isOp(dcmt);
+    if (tok) |tk| {
+        std.log.warn("{s}", .{tk.toStr()});
+        try expect(true);
+    } else {
+        try expect(false);
+    }
+}
+// test "Token.Kind.Op isType" {
+//     const cstr: [_]u8 = "\"literal str\"";
+//     const o1 = Token.Kind.isType(cstr);
+//     try expect(o1 == Token.Kind.Op.comment);
+// }

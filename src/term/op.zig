@@ -1,43 +1,30 @@
 const std = @import("std");
 const cursor = @import("cursor.zig");
 const Ansi = @import("./code.zig").Ansi;
-const TermOp = @import("./op.zig").TermOp;
 
-pub const Relative = enum(u8) {
-    to_start = '0',
-    to_end = '1',
-    entire = '2',
-
-    pub fn toCode(comptime self: Relative) []const u8 {
-        return comptime switch (self) {
-            .to_start => "0",
-            .to_end => "1",
-            .entire => "2",
-        };
-    }
-};
-
-pub const Direction = enum(u8) {
-    up = 'A',
-    down = 'B',
-    left = 'C',
-    right = 'D',
-
-    pub fn toCode(comptime self: Direction, comptime amt: []const u8) []const u8 {
-        return comptime Ansi.esc() ++ "[" ++ amt ++ switch (self) {
-            .up => "A",
-            .down => "B",
-            .right => "C",
-            .left => "D",
-        };
-    }
-};
+pub fn escPrefix() []const u8 {
+    return Ansi.esc() ++ "["; // length 2, or 3 if bright_bg
+}
 
 pub const Clear = enum(u8) {
-    clr_screen = 'J',
-    clr_line = 'K',
+    screen = 'J',
+    line = 'K',
 
     const Self = @This();
+
+    pub const To = enum(u8) {
+        start = '0',
+        end = '1',
+        full = '2',
+
+        pub fn toCode(comptime self: Clear.To) []const u8 {
+            return comptime switch (self) {
+                .to_start => "0",
+                .to_end => "1",
+                .entire => "2",
+            };
+        }
+    };
 
     pub fn pre() []const u8 {
         return Ansi.esc() ++ "[";
@@ -45,16 +32,32 @@ pub const Clear = enum(u8) {
 
     pub fn toCode(comptime self: Self) []const u8 {
         comptime switch (self) {
-            .clear_screen => "J",
-            .clear_line => "K",
+            .screen => "J",
+            .line => "K",
         };
     }
 
-    pub fn clearScreen(rel: Relative) []const u8 {
+    pub fn toSeq(self: Self, rel: Clear.To) []const u8 {
+        return Self.pre() ++ rel.toCode() ++ self.toCode();
+    }
+
+    pub fn clearScreen(rel: Clear.To) []const u8 {
         return Self.pre() ++ rel.toCode() ++ "J";
     }
 
-    pub fn clearLine(rel: Relative) []const u8 {
+    pub fn clearLine(rel: Clear.To) []const u8 {
         return Self.pre() ++ rel.toCode() ++ "K";
+    }
+
+    pub fn toEnd(self: Self) []const u8 {
+        return self.toSeq(Clear.To.to_end);
+    }
+
+    pub fn toStart(self: Self) []const u8 {
+        return self.toSeq(Clear.To.to_start);
+    }
+
+    pub fn entire(self: Self) []const u8 {
+        return self.toSeq(Clear.To.entire);
     }
 };

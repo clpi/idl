@@ -13,75 +13,6 @@ const print = std.debug.print;
 const reader = io.getStdIn().reader();
 const writer = io.getStdIn().writer();
 
-pub const Spec = enum(u8) {
-    normal_fg = 3,
-    normal_bg = 4,
-    bright_fg = 9,
-    bright_bg = 10,
-
-    const Self = @This();
-
-    pub fn default() Self {
-        return Self.normal_fg;
-    }
-
-    pub fn toCode(self: Self) []const u8 {
-        return switch (self) {
-            .normal_fg => "3",
-            .normal_bg => "4",
-            .bright_fg => "9",
-            .bright_bg => "10",
-        };
-    }
-
-    pub fn init(bri: Brightness, loc: Location) Self {
-        return switch (bri) {
-            Brightness.normal => switch (loc) {
-                Location.fg => Self.normal_fg,
-                Location.bg => Self.normal_bg,
-            },
-            Brightness.bright => switch (loc) {
-                Location.fg => Self.bright_fg,
-                Location.bg => Self.bright_bg,
-            },
-        };
-    }
-
-    pub fn len(comptime self: Self) u8 {
-        return comptime switch (self) {
-            .bright_bg => 2,
-            else => 1,
-        } + Ansi.esc().len;
-    }
-    pub fn prefix() []const u8 {
-        return Ansi.esc() ++ "["; // length 2, or 3 if bright_bg
-    }
-    pub fn toInt(self: Self) u8 {
-        return @enumToInt(self);
-    }
-    pub fn fmtAnsi(comptime self: Self, ansi: Ansi) []const u8 {
-        return Ansi.toNumString(ansi) ++ self.toNumString();
-    }
-
-    pub fn expandAnsi(self: Self, asc: []u8) []const u8 {
-        return asc ++ self.toCode();
-    }
-
-    // pub fn toEscCode(comptime self: Self) ![]const u8 {
-    //     // return &[_]@as(u8, control_code.ESC) ++ &[_]u8{@enumToInt(self)};
-    //     const c1 = try utils.intToStr(control_code.ESC);
-    //     const c2 = try utils.intToStr(self);
-    //     return c1 ++ c2;
-    // }
-
-    pub const Location = enum {
-        fg,
-        bg,
-    };
-
-    pub const Brightness = enum { bright, normal };
-};
-
 /// Struct Version of the escape sequence with
 pub const Color = enum(u8) {
     black = 0,
@@ -92,8 +23,7 @@ pub const Color = enum(u8) {
     magenta = 5,
     cyan = 6,
     white = 7,
-    eight = 8,
-    nine = 9,
+    rgb = 8,
 
     const Self = @This();
 
@@ -108,9 +38,12 @@ pub const Color = enum(u8) {
             .magenta => "5",
             .cyan => "6",
             .white => "7",
-            .eight => "8",
-            .nine => "9",
+            .rgb => "8",
         };
+    }
+
+    pub fn index() []const u8 {
+        return "\x1B[38;5m";
     }
 
     pub fn fg(comptime self: Self) []const u8 {
@@ -168,6 +101,67 @@ pub const Color = enum(u8) {
         const sty = style orelse Style.none();
         try std.io.getStdOut().writer().writeAll(self.styled(comptime sty, comptime sp));
     }
+    pub const Spec = enum(u8) {
+        normal_fg = 3,
+        normal_bg = 4,
+        bright_fg = 9,
+        bright_bg = 10,
+
+        const Self = @This();
+
+        pub fn default() Spec {
+            return .normal_fg;
+        }
+
+        pub fn toCode(self: Spec) []const u8 {
+            return switch (self) {
+                .normal_fg => "3",
+                .normal_bg => "4",
+                .bright_fg => "9",
+                .bright_bg => "10",
+            };
+        }
+
+        pub fn init(bri: Brightness, loc: Location) Spec {
+            return switch (bri) {
+                Brightness.normal => switch (loc) {
+                    Location.fg => Spec.normal_fg,
+                    Location.bg => Spec.normal_bg,
+                },
+                Brightness.bright => switch (loc) {
+                    Location.fg => Spec.bright_fg,
+                    Location.bg => Spec.bright_bg,
+                },
+            };
+        }
+
+        pub fn len(comptime self: Spec) u8 {
+            return comptime switch (self) {
+                .bright_bg => 2,
+                else => 1,
+            } + Ansi.esc().len;
+        }
+        pub fn prefix() []const u8 {
+            return Ansi.esc() ++ "["; // length 2, or 3 if bright_bg
+        }
+        pub fn toInt(self: Spec) u8 {
+            return @enumToInt(self);
+        }
+        pub fn fmtAnsi(comptime self: Spec, ansi: Ansi) []const u8 {
+            return Ansi.toNumString(ansi) ++ self.toNumString();
+        }
+
+        pub fn expandAnsi(self: Spec, asc: []u8) []const u8 {
+            return asc ++ self.toCode();
+        }
+
+        pub const Location = enum {
+            fg,
+            bg,
+        };
+
+        pub const Brightness = enum { bright, normal };
+    };
 };
 
 pub fn reset() []const u8 {
@@ -176,11 +170,51 @@ pub fn reset() []const u8 {
 pub fn writeReset() void {
     try std.io.getStdOut().writer().writeAll("\x1B[0m");
 }
+pub const Fg = packed struct {
+    pub const Br = struct {
+        pub const gray = "\x1B[30;1m";
+        pub const red = "\x1B[31;1m";
+        pub const green = "\x1B[32;1m";
+        pub const yellow = "\x1B[33;1m";
+        pub const blue = "\x1B[34;1m";
+        pub const magenta = "\x1B[35;1m";
+        pub const cyan = "\x1B[36;1m";
+        pub const white = "\x1B[37;1m";
+    };
+    pub const black = "\x1B[30m";
+    pub const red = "\x1B[31m";
+    pub const green = "\x1B[32m";
+    pub const yellow = "\x1B[33m";
+    pub const blue = "\x1B[34m";
+    pub const magenta = "\x1B[35m";
+    pub const cyan = "\x1B[36m";
+    pub const white = "\x1B[37m";
+};
+pub const Bg = packed struct {
+    pub const Br = struct {
+        pub const gray = "\x1B[40;1m";
+        pub const red = "\x1B[41;1m";
+        pub const green = "\x1B[42;1m";
+        pub const yellow = "\x1B[43;1m";
+        pub const blue = "\x1B[44;1m";
+        pub const magenta = "\x1B[45;1m";
+        pub const cyan = "\x1B[46;1m";
+        pub const white = "\x1B[47;1m";
+    };
+    pub const black = "\x1B[40m";
+    pub const red = "\x1B[41m";
+    pub const green = "\x1B[42m";
+    pub const yellow = "\x1B[43m";
+    pub const blue = "\x1B[44m";
+    pub const magenta = "\x1B[45m";
+    pub const cyan = "\x1B[46m";
+    pub const white = "\x1B[47m";
+};
 
 const expect = std.testing.expect;
-const expectEq = std.testing.expectEqual;
+
 test "Spec init" {
-    const spec = Spec.init(.normal, .fg);
+    const spec = Color.Spec.init(.normal, .fg);
     std.log.warn(" {s}: {d}", .{ spec, spec.toInt() });
     try expect(spec.toInt() == 3);
 }
@@ -191,7 +225,7 @@ test "Color init" {
 }
 
 test "Color toCode" {
-    const spec = comptime Spec.init(.normal, .bg);
+    const spec = comptime Color.Spec.init(.normal, .bg);
     const col = comptime Color.red;
     const code = comptime col.toCode(spec);
     const pre = comptime col.toPre(spec);

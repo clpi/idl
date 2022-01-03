@@ -4,39 +4,63 @@
 /// NOTE: Consider making this a struct?
 const std = @import("std");
 const Ansi = @import("./code.zig").Ansi;
-const Direction = @import("./op.zig").Direction;
+const op = @import("./op.zig");
+const Direction = op.Direction;
 const mem = std.mem;
 const os = std.os;
 const stdo = std.io.getStdOut;
 
-pub const Cursor = enum(u8) {
+pub const Direction = enum(u8) {
     up = 'A',
     down = 'B',
-    right = 'C',
-    left = 'D',
-    nextln = 'E',
-    prevln = 'F',
-    set_col = 'G',
-    set = 'H',
-    save = 's',
-    restore = 'u',
+    left = 'C',
+    right = 'D',
 
-    const Self = @This();
-
-    pub fn toCode(comptime self: Self) []const u8 {
-        return comptime switch (self) {
+    pub fn toSeq(comptime self: Direction, comptime amt: []const u8) []const u8 {
+        return comptime Ansi.esc() ++ "[" ++ amt ++ switch (self) {
             .up => "A",
             .down => "B",
             .right => "C",
             .left => "D",
-            .nextln => "E",
-            .prevln => "F",
-            .set_col => "G",
-            .set => "H",
-            .save => "s",
-            .restore => "u",
         };
     }
+};
+
+pub const Cursor = struct {
+    x: usize,
+    y: usize,
+    const Self = @This();
+    pub fn init() Self {
+        return Self{ .x = 0, .y = 0 };
+    }
+
+    pub const Op = enum(u8) {
+        up = 'A',
+        down = 'B',
+        right = 'C',
+        left = 'D',
+        nextln = 'E',
+        prevln = 'F',
+        set_col = 'G',
+        set = 'H',
+        save = 's',
+        restore = 'u',
+
+        pub fn toCode(comptime self: Self) []const u8 {
+            return comptime switch (self) {
+                .up => "A",
+                .down => "B",
+                .right => "C",
+                .left => "D",
+                .nextln => "E",
+                .prevln => "F",
+                .set_col => "G",
+                .set => "H",
+                .save => "s",
+                .restore => "u",
+            };
+        }
+    };
 
     pub fn up(comptime amt: []const u8) []const u8 {
         return Direction.up.toCode(amt);
