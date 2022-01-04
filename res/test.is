@@ -12,6 +12,9 @@ print("Hello, World!\n");
 --: print "definition block" :--
 ..! print "await block" !..
 
+person.accessed("by the dot")
+other:faccessed("by the colon")
+
 
 
 print "Helo there";

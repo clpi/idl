@@ -1,4 +1,9 @@
 const std = @import("std");
+const colors = @import("../term/colors.zig");
+const Color = colors.Color;
+const ast = @import("./ast.zig");
+const Ast = ast.Ast;
+const Fg = colors.Fg;
 const eq = std.mem.eql;
 const meta = std.meta;
 const mem = std.mem;
@@ -49,7 +54,7 @@ pub const Token = struct {
             };
         }
 
-        pub const Op = enum(u8) {
+        pub const Op = enum(i32) {
             at,
             amp,
             dol,
@@ -91,6 +96,11 @@ pub const Token = struct {
             range_xx, // non-inclusive range         ..
             comment,
             access,
+            faccess,
+            use,
+            maybe,
+            not,
+            ask,
             le,
             ge,
             farrow,
@@ -127,6 +137,10 @@ pub const Token = struct {
 
             pub fn toStr(oper: Token.Kind.Op) []const u8 {
                 return @tagName(oper);
+            }
+
+            pub fn code(self: Self) i32 {
+                return @enumToInt(self);
             }
 
             pub fn isCharOp(inp: u8) ?Token.Kind.Op {
@@ -266,6 +280,19 @@ pub const Token = struct {
             pub fn toStr(kword: Token.Kind.Kw) []const u8 {
                 return @tagName(kword);
             }
+
+            pub fn kwOp(self: Self) ?Kind.Op {
+                return switch (self) {
+                    Kind.Kw.@"or" => Kind.Op.@"or",
+                    Kind.Kw.@"and" => Kind.Op.@"and",
+                    Kind.Kw.use => Kind.Op.use,
+                    else => null,
+                };
+            }
+
+            pub fn toNode(self: Self) Ast.Node {
+                return Ast.Node.init(self);
+            }
         };
 
         pub const @"Type" = union(enum) {
@@ -274,7 +301,7 @@ pub const Token = struct {
             const tv = .{ "true", "True", "TRUE" };
             const fv = .{ "false", "False", "FALSE" };
 
-            list,
+            seq,
             ident: []const u8,
             int: usize,
             float: f32,
@@ -315,12 +342,12 @@ pub const Token = struct {
                                 dquote = true;
                             },
                             '}' => if (bracket) {
-                                return Token.Kind.@"Type"{ .list = wd };
+                                return Token.Kind.@"Type"{ .seq = wd };
                             } else {
                                 dquote = true;
                             },
                             '}' => if (bracket) {
-                                return Token.Kind.@"Type"{ .list = wd };
+                                return Token.Kind.@"Type"{ .seq = wd };
                             } else {
                                 dquote = true;
                             },
@@ -345,7 +372,7 @@ pub const Token = struct {
                 return switch (ty) {
                     .ident => |_| std.meta.tagName(.ident),
                     .byte => |_| std.meta.tagName(.byte),
-                    .list => std.meta.tagName(.list),
+                    .seq => std.meta.tagName(.seq),
                     .int => |_| std.meta.tagName(.int),
                     .float => |_| std.meta.tagName(.float),
                     .str => |_| std.meta.tagName(.str),
@@ -371,28 +398,30 @@ pub const Token = struct {
             }
         };
 
-        pub const Block = enum(u8) {
-            lpar = '(',
-            rpar = ')',
-            lbrace = '{',
-            rbrace = '}',
-            lbracket = '[',
-            rbracket = ']',
-            squote = '\'',
-            dquote = '"',
-            btick = '`',
+        pub const Block = union(enum(u8)) {
+            lpar,
+            rpar,
+            lbrace: ?[]const u8,
+            rbrace: ?[]const u8,
+            lbracket: ?[]const u8,
+            rbracket: ?[]const u8,
+            lstate: ?[]const u8,
+            rstate: ?[]const u8,
+            lattr: ?[]const u8,
+            rattr: ?[]const u8,
+            ldef: ?[]const u8,
+            rdef: ?[]const u8,
+            ltype: ?[]const u8,
+            rtype: ?[]const u8,
+            squote,
+            dquote,
+            btick,
             lcomment, //comment left block
             rcomment,
-            lstate,
-            rstate,
             lque,
             rque,
             ldoc,
             rdoc,
-            ldef,
-            rdef,
-            lattr,
-            rattr,
             lawait,
             rawait,
             llnquery,
@@ -401,8 +430,37 @@ pub const Token = struct {
             rdocln,
             lawaitque,
             rawaitque,
-            ltype,
-            rtype,
+
+            pub const Info = struct {
+                ident: ?[]const u8,
+                state: Rel,
+
+                pub const Rel = union(enum(u2)) { start, end, outside };
+            };
+
+            pub fn isBlockStart(self: Token.Kind.Block) Token.Kind.Block.Info.Rel {
+                return switch (@tagName(self)[0]) {
+                    'l' => .start,
+                    'r' => .end,
+                    else => .outside,
+                };
+            }
+
+            pub fn brace(id: ?[]const u8, rel: Kind.Block.Rel) Kind.Block {
+                switch (rel) {
+                    .start, .outside => Kind.Block{ .lbrace = id },
+                    .end => Kind.Block{ .rbrace = id },
+                }
+                return Self.lbrace;
+            }
+
+            pub fn state(id: ?[]const u8, rel: Kind.Block.Rel) Kind.Block {
+                switch (rel) {
+                    .start, .ambiguous => Kind.Block.State{ .lbrace = id },
+                    .end => Kind.Block.State{ .rbrace = id },
+                }
+                return Self.lbrace;
+            }
 
             pub const ltypesym = '<';
             pub const rtypesym = '>';
@@ -450,8 +508,6 @@ pub const Token = struct {
             pub fn toStr(bl: Token.Kind.Block) []const u8 {
                 return @tagName(bl);
             }
-
-            pub const Rel = enum(u8) { stop = 0, start = 1 };
         };
 
         pub fn fromString(inp: []const u8) ?Self.Kind {
@@ -463,58 +519,42 @@ pub const Token = struct {
             return null;
         }
     };
-    pub fn writeStr(self: Self, f: std.fs.File, a: std.mem.Allocator, s: []const u8) !void {
-        const init_fmt = "{d:>5}{d:>7}  {s:<10}{s:<15}";
-        const common_args = .{ self.line, self.col, @typeName(@TypeOf(self.kind)), self.kind.toStr() };
-        _ = try f.write(try std.fmt.allocPrint(a, init_fmt ++ "{s}\n", common_args ++ .{s}));
-    }
-    pub fn writeInt(self: Self, f: std.fs.File, a: std.mem.Allocator, s: u8) !void {
-        const init_fmt = "{d:>5}{d:>7}  {s:<10}{s:<15}";
-        const common_args = .{ self.line, self.col, self.kind.toStr() };
-        _ = try f.write(try std.fmt.allocPrint(a, init_fmt ++ "{d}\n", common_args ++ .{s}));
-    }
-
-    pub fn writeStdout(self: Self, a: std.mem.Allocator, s: []const u8) !void {
-        var stdout = std.io.getStdOut();
-        try self.writeStr(stdout, a, s);
-    }
-    pub fn write(self: Token, al: std.mem.Allocator) !void {
-        // if (self.token) |tokn| {
-        //
-        // }
-        if (self.val) |value| {
-            switch (value) {
-                .str => |st| try self.writeStdout(al, st),
-                .byte => |_| {}, // try self.writeInt(std.io.getStdOut(), al, bt),
-                .float => |_| {}, //try self.writeInt(al, std.io.getStdOut(), al, @as(u8, fl)),
-                .intl => |_| {}, //try self.writeInt(std.io.getStdOut(), al, @as(u8, il)),
-            }
-        }
-    }
-    //     switch (self.kind) {
-    //         .op => |op| try self.writeStdout(al, op.toStr()),
-    //         .block => |bl| try self.writeStdout(al, bl.toStr()),
-    //         .eof => try self.writeStdout(al, "EOF"),
-    //         .unknown => try self.writeStdout(al, "UNK"),
-    //         .kw => |kw| try self.writeStdout(al, kw.toStr()),
-    //         .type => |ttype| {
-    //             switch (ttype) {
-    //                 .ident => |iden| try self.writeStdout(al, iden),
-    //                 .byte => |_| try self.writeStdout(al, @tagName(Token.Kind.@"Type".byte)),
-    //                 .list => |_| try self.writeStdout(al, @tagName(.list)),
-    //                 .int => |_| try self.writeStdout(al, @tagName(.int)),
-    //                 .float => |_| try self.writeStdout(al, @tagName(.float)),
-    //                 .str => |st| try self.writeStdout(al, st),
-    //                 .bool => |_| try self.writeStdout(al, @tagName(.bool)),
-    //             }
-    //         },
-    //     }
 
     pub const Val = union(enum) {
         intl: i32,
         float: f32,
         byte: u8,
         str: []const u8,
+    };
+
+    pub const Iter = struct {
+        allocator: std.mem.Allocator,
+        items: std.ArrayList(Token),
+        current: usize,
+
+        const Self = @This();
+
+        pub fn init(a: std.mem.Allocator, tok: std.ArrayList(Token)) Token.Iter {
+            return Token.Iter{ .current = 0, .items = tok, .allocator = a };
+        }
+
+        pub fn next(self: *Token.Iter) ?Token {
+            if (self.items.popOrNull()) |token| {
+                return token;
+            } else return null;
+        }
+
+        pub fn fromStr(input: []const u8, a: std.mem.Allocator) !Token.Iter {
+            var ts = std.ArrayList([]const u8).init(a);
+            var tl = std.ArrayList(Token).init(a);
+            const token_ln = std.mem.tokenize(u8, input, "\n");
+            for (token_ln) |tokln| {
+                for (tokln) |tok| {
+                    try ts.append(tok);
+                }
+            }
+            return Iter{ .allocator = a, .items = tl };
+        }
     };
 };
 

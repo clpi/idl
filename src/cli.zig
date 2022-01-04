@@ -75,10 +75,12 @@ pub fn procArgs(gpa: std.mem.Allocator) !void {
 pub fn tokFile(gpa: std.mem.Allocator) !void {
     const test_file = @embedFile("../res/test.is");
     util.respOk("Welcome to the Idlang TOKENIZER REPL\n");
-    const tok = try lexer.lex(gpa, test_file);
-    var psr = parser.Parser.init(gpa, tok);
-    try psr.parse();
-    const tokens = try lexer.tokenListToString(gpa, tok);
+    // var psr = parser.Parser.init(gpa, test_file);
+    // _ = try psr.parse();
+
+    var lx = lexer.Lexer.init(test_file, gpa);
+    _ = try lx.lex();
+    const tokens = try lx.tokenListToString();
     _ = try std.io.getStdOut().writeAll(tokens);
 }
 

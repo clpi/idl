@@ -3,6 +3,7 @@ const testing = std.testing;
 const tok = @import("./token.zig");
 const ascii = std.ascii;
 const Token = tok.Token;
+const tfmt = @import("./fmt.zig");
 const colors = @import("../term/colors.zig");
 const Color = colors.Color;
 const Kind = Token.Kind;
@@ -13,101 +14,82 @@ const Block = Kind.Block;
 const lg = std.log.scoped(.lexer);
 
 // pub fn lex(allocator: std.mem.Allocator, inp: []u8) !std.ArrayList(Token) {
-pub fn lex(allocator: std.mem.Allocator, inp: []const u8) !std.ArrayList(Token) {
-    var tks = std.ArrayList(Token).init(allocator);
-    var lexer = Lexer.init(inp);
-    while (lexer.next()) |ch| {
-        switch (ch) {
-            ' ' => {},
-            '*' => try tks.append(lexer.buildOp(.mul)),
-            '\n' => try tks.append(lexer.buildOp(.newline)),
-            '.' => _ = try addToken(try lexer.periodOrOther(), &tks),
-            '%' => try tks.append(lexer.buildOp(.mod)),
-            '+' => try tks.append(lexer.buildOp(.add)),
-            '-' => _ = try addToken(try lexer.subOrOther(), &tks),
-            '?' => try tks.append(lexer.buildOp(.ques)),
-            '<' => try tks.append(lexer.followed('=', Kind{ .op = .le }, Kind{ .op = .lt })),
-            '>' => try tks.append(lexer.followed('=', Kind{ .op = .ge }, Kind{ .op = .gt })),
-            '=' => try tks.append(lexer.followed('=', Kind{ .op = .eq_comp }, Kind{ .op = .assign })),
-            '!' => try tks.append(lexer.followed('=', Kind{ .op = .ne }, Kind{ .op = .excl })),
-            '(' => try tks.append(lexer.buildBlock(.lpar)),
-            ')' => try tks.append(lexer.buildBlock(.rpar)),
-            '{' => try tks.append(lexer.buildBlock(.lbrace)),
-            '}' => try tks.append(lexer.buildBlock(.rbrace)),
-            ';' => try tks.append(lexer.buildOp(.semicolon)),
-            ':' => _ = try addToken(try lexer.colonOrOther(), &tks),
-            ',' => try tks.append(lexer.buildOp(.comma)),
-            '&' => try tks.append(try lexer.consec('&', Kind{ .op = .amp })),
-            '|' => _ = try addToken(try lexer.pipeOrOther(), &tks),
-            '/' => _ = if (try lexer.divOrComment()) |token| try tks.append(token),
-            '_', 'a'...'z', 'A'...'Z' => try tks.append(try lexer.identOrKw()),
-            '"' => try tks.append(try lexer.strLiteral()),
-            '0'...'9' => try tks.append(try lexer.intLiteral()),
-            '\'' => try tks.append(try lexer.intChar()),
-            else => {},
-        }
-    }
-    try tks.append(lexer.buildKind(Token.Kind.eof));
-    return tks;
-}
-pub fn addToken(tokn: ?Token, tokenl: *std.ArrayList(Token)) !?Token {
-    if (tokn) |token| {
-        tokenl.append(token) catch {
-            return LexerError.OutOfSpace;
-        };
-        return token;
-    } else return null;
-}
-
-pub fn tokenListToString(allocator: std.mem.Allocator, token_list: std.ArrayList(Token)) ![]u8 {
-    var result = std.ArrayList(u8).init(allocator);
-    var w = result.writer();
-    for (token_list.items) |token| {
-        const common_args = .{ token.line, token.col, token.kind.toStr() };
-        try token.write(allocator);
-        if (token.val) |value| {
-            const init_fmt = "{d:>5}{d:>7} {s:<15}";
-            switch (value) {
-                .str => |str| _ = try w.write(try std.fmt.allocPrint(
-                    allocator,
-                    init_fmt ++ "{s}\n",
-                    common_args ++ .{str},
-                )),
-                .byte => |by| _ = try w.write(try std.fmt.allocPrint(allocator, init_fmt ++ "{d}\n", common_args ++ .{by})),
-                .float => |fl| _ = try w.write(try std.fmt.allocPrint(allocator, init_fmt ++ "{d}\n", common_args ++ .{fl})),
-                .intl => |i| _ = try w.write(try std.fmt.allocPrint(
-                    allocator,
-                    init_fmt ++ "{d}\n",
-                    common_args ++ .{i},
-                )),
-            }
-        } else {
-            if (@TypeOf(token.kind) == Kind.Op) {
-                std.debug.print(" [{s}END STATEMENT{s}] ", colors.Fg.green, colors.Fg.reset);
-            }
-            _ = try w.write(try std.fmt.allocPrint(allocator, "{d:>5}{d:>7} {s}\n", common_args));
-        }
-    }
-    return result.items;
-}
 
 pub const Lexer = struct {
     inp: []const u8,
+    tokens: std.ArrayList(Token),
     line: usize,
     col: usize,
     pos: usize,
     start: bool,
+    allocator: std.mem.Allocator,
 
     const Self = @This();
 
-    pub fn init(inp: []const u8) Lexer {
+    pub fn init(inp: []const u8, a: std.mem.Allocator) Lexer {
         return Lexer{
             .inp = inp,
+            .tokens = std.ArrayList(Token).init(a),
             .line = 1,
             .col = 1,
             .pos = 0,
             .start = true,
+            .allocator = a,
         };
+    }
+    pub fn lex(self: *Self) !std.ArrayList(Token) {
+        while (self.next()) |ch| {
+            switch (ch) {
+                ' ' => {},
+                '*' => try self.tokens.append(self.buildOp(.mul)),
+                '\n' => try self.tokens.append(self.buildOp(.newline)),
+                '.' => _ = try self.addToken(try self.periodOrOther()),
+                '%' => try self.tokens.append(self.buildOp(.mod)),
+                '+' => try self.tokens.append(self.buildOp(.add)),
+                '-' => _ = try self.addToken(try self.subOrOther()),
+                '!' => _ = try self.addToken(try self.exclOrOther()),
+                '?' => try self.tokens.append(self.buildOp(.ques)),
+                '<' => try self.tokens.append(self.followed('=', Kind{ .op = .le }, Kind{ .op = .lt })),
+                '>' => try self.tokens.append(self.followed('=', Kind{ .op = .ge }, Kind{ .op = .gt })),
+                '=' => try self.tokens.append(self.followed('=', Kind{ .op = .eq_comp }, Kind{ .op = .assign })),
+                '(' => try self.tokens.append(self.buildBlock(.lpar)),
+                ')' => try self.tokens.append(self.buildBlock(.rpar)),
+                '{' => try self.tokens.append(self.buildBlock(Block{ .lbrace = null })),
+                '}' => try self.tokens.append(self.buildBlock(Block{ .rbrace = null })),
+                ';' => try self.tokens.append(self.buildOp(.semicolon)),
+                ':' => _ = try self.addToken(try self.colonOrOther()),
+                ',' => try self.tokens.append(self.buildOp(.comma)),
+                '&' => try self.tokens.append(try self.consec('&', Kind{ .op = .amp })),
+                '|' => _ = try self.addToken(try self.pipeOrOther()),
+                '/' => _ = if (try self.divOrComment()) |token| try self.tokens.append(token),
+                '_', 'a'...'z', 'A'...'Z' => try self.tokens.append(try self.identOrKw()),
+                '"' => try self.tokens.append(try self.strLiteral()),
+                '0'...'9' => try self.tokens.append(try self.intLiteral()),
+                '\'' => try self.tokens.append(try self.intChar()),
+                else => {},
+            }
+        }
+        try self.tokens.append(self.buildKind(Token.Kind.eof));
+        return self.tokens;
+    }
+
+    pub fn addToken(self: *Self, tokn: ?Token) !?Token {
+        if (tokn) |token| {
+            _ = self.next();
+            self.tokens.append(token) catch {
+                return LexerError.OutOfSpace;
+            };
+            return token;
+        } else return null;
+    }
+
+    pub fn tokenListToString(self: Self) ![]u8 {
+        var st = std.ArrayList(u8).init(self.allocator);
+        for (self.tokens.items) |token| {
+            const res = try tfmt.write(token, self.allocator);
+            try st.appendSlice(res);
+        }
+        return st.allocatedSlice();
     }
 
     pub fn buildToken(self: Self) Token {
@@ -170,7 +152,7 @@ pub const Lexer = struct {
         return self.buildOp(Op.div);
     }
 
-    // Called when: found '-', need to know if next char is * or else
+    // Called when: found ':', need to know if next char is * or else
     pub fn colonOrOther(self: *Self) LexerError!?Token {
         if (self.peek()) |ch| {
             const tk = switch (ch) {
@@ -182,18 +164,19 @@ pub const Lexer = struct {
                             '|' => self.buildBlock(Block.lcomment),
                             '?' => self.buildBlock(Block.lque),
                             '!' => self.buildBlock(Block.ldoc),
-                            ':' => self.buildBlock(Block.ldef),
-                            else => self.buildOp(Op.comment),
+                            ':' => self.buildBlock(Block{ .ldef = null }),
+                            else => self.buildBlock(Block{ .rattr = null }),
                         };
                     }
                     return LexerError.EofInComment;
                 },
                 '=' => self.buildOp(Op.sub_eq),
-                '|' => self.buildBlock(Block.lstate),
+                '|' => self.buildBlock(Block{ .lstate = null }),
                 '!' => self.buildBlock(Block.ldocln),
                 '?' => self.buildBlock(Block.llnquery),
                 ':' => self.buildOp(Op.abstractor),
-                ' ', '_', 'a'...'z', 'A'...'Z', '0'...'9' => self.buildOp(Op.sub),
+                '_', 'a'...'z', 'A'...'Z', '0'...'9' => self.buildOp(Op.faccess),
+                ' ' => self.buildOp(Op.colon),
                 else => null,
             };
             return tk;
@@ -210,17 +193,17 @@ pub const Lexer = struct {
                             '|' => self.buildBlock(Block.lcomment),
                             '?' => self.buildBlock(Block.lque),
                             '!' => self.buildBlock(Block.ldoc),
-                            ':' => self.buildBlock(Block.ldef),
+                            ':' => self.buildBlock(Block{ .ldef = null }),
                             else => self.buildOp(Op.comment),
                         };
                     }
                     return LexerError.EofInComment;
                 },
                 '=' => self.buildOp(Op.sub_eq),
-                '|' => self.buildBlock(Block.lstate),
+                '|' => self.buildBlock(Block{ .lstate = null }),
                 '!' => self.buildBlock(Block.ldocln),
                 '?' => self.buildBlock(Block.llnquery),
-                ':' => self.buildBlock(Block.lattr),
+                ':' => self.buildBlock(Block{ .lattr = null }),
                 ' ', '_', 'a'...'z', 'A'...'Z', '0'...'9' => self.buildOp(Op.sub),
                 else => null,
             };
@@ -228,7 +211,40 @@ pub const Lexer = struct {
         } else return LexerError.EofInComment;
     }
 
-    // Called when: found '-', need to know if next char is * or else
+    // Called when: found '!', need to know if next char is * or else
+    pub fn exclOrOther(self: *Self) LexerError!?Token {
+        if (self.peek()) |ch| {
+            const tk: ?Token = switch (ch) {
+                '=' => self.buildOp(Op.ne),
+                '.' => {
+                    _ = self.next();
+                    if (self.peek()) |chn| {
+                        return switch (chn) {
+                            '.' => self.buildBlock(.rawait),
+                            else => null,
+                        };
+                    }
+                    return LexerError.EofInStr;
+                },
+                '-' => {
+                    _ = self.next();
+                    if (self.peek()) |chn| {
+                        return switch (chn) {
+                            '-' => self.buildBlock(.rdoc),
+                            else => self.buildBlock(.rdocln),
+                        };
+                    }
+                    return LexerError.EofInStr;
+                },
+                '_', 'a'...'z', 'A'...'Z', '0'...'9' => self.buildOp(Op.not),
+                ' ' => self.buildOp(.excl),
+                else => null,
+            };
+            return tk;
+        } else return LexerError.EofInComment;
+    }
+
+    // Called when: found '.', need to know if next char is * or else
     pub fn periodOrOther(self: *Self) LexerError!?Token {
         if (self.peek()) |ch| {
             const tk: ?Token = switch (ch) {
@@ -265,7 +281,7 @@ pub const Lexer = struct {
                     _ = self.next();
                     if (self.peek()) |chn| return switch (chn) {
                         '-' => self.buildBlock(.rcomment),
-                        else => self.buildBlock(.rstate),
+                        else => self.buildBlock(Block{ .rstate = null }),
                     } else return LexerError.EofInStr;
                 },
                 '|' => self.buildOp(Op.@"or"),
@@ -402,7 +418,32 @@ pub const Lexer = struct {
     }
 };
 
-pub const LexerError = error{ EmptyCharConst, UnknownEscSeq, MulticharConst, EofInComment, EofInStr, EolInStr, UnknownChar, InvalidNum, OutOfSpace };
+pub const Tokenizer = struct {
+    it: std.mem.SplitIterator(u8),
+    idk: usize,
+
+    const Self = @This();
+
+    pub fn init(input: []const u8) Self {
+        return Self{ .it = std.mem.split(u8, input, "\n") };
+    }
+
+    pub fn next(self: *Self) !?Token {
+        while (self.it.next()) |ln| {
+            if (ln.len == 0) return null;
+            var tok_it = std.mem.tokenize(u8, ln, " ");
+            const content = tok_it.next();
+            if (content) |t| {
+                const token = Token.Kind.fromString(t);
+                self.idx = t.index;
+                return token;
+            }
+        }
+        return null;
+    }
+};
+
+pub const LexerError = error{ EmptyCharConst, UnknownEscSeq, MulticharConst, EofInComment, EofInStr, EolInStr, UnknownChar, InvalidNum, OutOfSpace } || std.fmt.ParseIntError;
 
 test "parses_idents_ok" {
     testing.expectEqual(5, 5);
