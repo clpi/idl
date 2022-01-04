@@ -77,12 +77,18 @@ pub const Token = struct {
             add_eq,
             div_eq,
             sub_eq,
+            @"or",
+            @"and",
             mul_eq,
             ln_doc_cmt,
-            pointer,
+            abstractor,
+            pointer, // ::
             ref,
             assoc,
-            range,
+            range, // range : ...
+            range_xl, // range non-inclusive of start, : :..
+            range_xr, // range non-inclusive of end ..:
+            range_xx, // non-inclusive range         ..
             comment,
             access,
             le,
@@ -139,7 +145,6 @@ pub const Token = struct {
                         '>' => .farrow,
                         '-' => .comment,
                         '=' => .sub_eq,
-                        '!' => .ln_doc_cmt,
                         else => .sub,
                     },
                     '.' => comptime switch (inp[1]) {
@@ -376,11 +381,45 @@ pub const Token = struct {
             squote = '\'',
             dquote = '"',
             btick = '`',
-            lcblock, //comment left block
-            rcblock,
+            lcomment, //comment left block
+            rcomment,
+            lstate,
+            rstate,
+            lque,
+            rque,
+            ldoc,
+            rdoc,
+            ldef,
+            rdef,
+            lattr,
+            rattr,
+            lawait,
+            rawait,
+            llnquery,
+            rlnquery,
+            ldocln,
+            rdocln,
+            lawaitque,
+            rawaitque,
+            ltype,
+            rtype,
+
+            pub const ltypesym = '<';
+            pub const rtypesym = '>';
+
+            // All are used as line statements
+            pub const sblock = .{ "-|", "|-" };
+            pub const ablock = .{ "-:", ":-" };
+            pub const inlque = .{ "-?", "?-" };
+            pub const doclnc = .{ "-!", "!-" };
 
             pub const bcomment = .{ "--|", "|--" };
             pub const dcomment = .{ "--!", "!--" };
+            pub const defblock = .{ "--:", ":--" };
+            pub const queblock = .{ "--?", "?--" };
+
+            pub const waitblock = .{ "..!", "!.." };
+            pub const waitquery = .{ "..?", "?.." };
 
             pub const Block = @This();
 
@@ -397,9 +436,9 @@ pub const Token = struct {
                     '`' => .btick,
                     '-' => {
                         if (eq(u8, bcomment[0], inp)) {
-                            return .lcblock;
+                            return .lcomment;
                         } else if (eq(u8, bcomment[1], inp)) {
-                            return .rcblock;
+                            return .rcomment;
                         } else {
                             return null;
                         }
@@ -424,6 +463,53 @@ pub const Token = struct {
             return null;
         }
     };
+    pub fn writeStr(self: Self, f: std.fs.File, a: std.mem.Allocator, s: []const u8) !void {
+        const init_fmt = "{d:>5}{d:>7}  {s:<10}{s:<15}";
+        const common_args = .{ self.line, self.col, @typeName(@TypeOf(self.kind)), self.kind.toStr() };
+        _ = try f.write(try std.fmt.allocPrint(a, init_fmt ++ "{s}\n", common_args ++ .{s}));
+    }
+    pub fn writeInt(self: Self, f: std.fs.File, a: std.mem.Allocator, s: []const u8) !void {
+        const init_fmt = "{d:>5}{d:>7} {s:<15}";
+        const common_args = .{ self.line, self.col, self.kind.toStr() };
+        _ = try f.write(try std.fmt.allocPrint(a, init_fmt ++ "{d}\n", common_args ++ .{s}));
+    }
+
+    pub fn writeStdout(self: Self, a: std.mem.Allocator, s: []const u8) !void {
+        var stdout = std.io.getStdOut();
+        try self.writeStr(stdout, a, s);
+    }
+    pub fn write(self: Token, al: std.mem.Allocator) !void {
+        // if (self.token) |tokn| {
+        //
+        // }
+        if (self.val) |value| {
+            switch (value) {
+                .str => |st| try self.writeStdout(al, st),
+                .byte => |bt| try self.writeInt(al, std.io.getStdOut(), bt),
+                .float => |fl| try self.writeInt(al, std.io.getStdOut(), fl),
+                .intl => |il| try self.writeInt(al, std.io.getStdOut(), il),
+                else => {},
+            }
+        }
+        //     switch (self.kind) {
+        //         .op => |op| try self.writeStdout(al, op.toStr()),
+        //         .block => |bl| try self.writeStdout(al, bl.toStr()),
+        //         .eof => try self.writeStdout(al, "EOF"),
+        //         .unknown => try self.writeStdout(al, "UNK"),
+        //         .kw => |kw| try self.writeStdout(al, kw.toStr()),
+        //         .type => |ttype| {
+        //             switch (ttype) {
+        //                 .ident => |iden| try self.writeStdout(al, iden),
+        //                 .byte => |_| try self.writeStdout(al, @tagName(Token.Kind.@"Type".byte)),
+        //                 .list => |_| try self.writeStdout(al, @tagName(.list)),
+        //                 .int => |_| try self.writeStdout(al, @tagName(.int)),
+        //                 .float => |_| try self.writeStdout(al, @tagName(.float)),
+        //                 .str => |st| try self.writeStdout(al, st),
+        //                 .bool => |_| try self.writeStdout(al, @tagName(.bool)),
+        //             }
+        //         },
+        //     }
+    }
 
     pub const Val = union(enum) {
         intl: i32,

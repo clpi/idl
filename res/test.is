@@ -1,10 +1,21 @@
-/*
-  Hello world
-  TODO 
- */
 print("Hello, World!\n");
 
+-| print "State block" |-
+-: print "Attrib block/line (?)" :-
+-? print "Query line"
+-! Line doc comment
+-- Line comment
+
+--| print "Comment block!" |--
+--! print "Doc comment block!" !--
+--? print "Query block" ?--
+--: print "definition block" :--
+..! print "await block" !..
+
+
+
 print "Helo there";
+print b"byte string"
 
 /*
     NOTE: Builtin types: Int, String, List
