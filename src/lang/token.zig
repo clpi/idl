@@ -468,8 +468,8 @@ pub const Token = struct {
         const common_args = .{ self.line, self.col, @typeName(@TypeOf(self.kind)), self.kind.toStr() };
         _ = try f.write(try std.fmt.allocPrint(a, init_fmt ++ "{s}\n", common_args ++ .{s}));
     }
-    pub fn writeInt(self: Self, f: std.fs.File, a: std.mem.Allocator, s: []const u8) !void {
-        const init_fmt = "{d:>5}{d:>7} {s:<15}";
+    pub fn writeInt(self: Self, f: std.fs.File, a: std.mem.Allocator, s: u8) !void {
+        const init_fmt = "{d:>5}{d:>7}  {s:<10}{s:<15}";
         const common_args = .{ self.line, self.col, self.kind.toStr() };
         _ = try f.write(try std.fmt.allocPrint(a, init_fmt ++ "{d}\n", common_args ++ .{s}));
     }
@@ -485,31 +485,30 @@ pub const Token = struct {
         if (self.val) |value| {
             switch (value) {
                 .str => |st| try self.writeStdout(al, st),
-                .byte => |bt| try self.writeInt(al, std.io.getStdOut(), bt),
-                .float => |fl| try self.writeInt(al, std.io.getStdOut(), fl),
-                .intl => |il| try self.writeInt(al, std.io.getStdOut(), il),
-                else => {},
+                .byte => |_| {}, // try self.writeInt(std.io.getStdOut(), al, bt),
+                .float => |_| {}, //try self.writeInt(al, std.io.getStdOut(), al, @as(u8, fl)),
+                .intl => |_| {}, //try self.writeInt(std.io.getStdOut(), al, @as(u8, il)),
             }
         }
-        //     switch (self.kind) {
-        //         .op => |op| try self.writeStdout(al, op.toStr()),
-        //         .block => |bl| try self.writeStdout(al, bl.toStr()),
-        //         .eof => try self.writeStdout(al, "EOF"),
-        //         .unknown => try self.writeStdout(al, "UNK"),
-        //         .kw => |kw| try self.writeStdout(al, kw.toStr()),
-        //         .type => |ttype| {
-        //             switch (ttype) {
-        //                 .ident => |iden| try self.writeStdout(al, iden),
-        //                 .byte => |_| try self.writeStdout(al, @tagName(Token.Kind.@"Type".byte)),
-        //                 .list => |_| try self.writeStdout(al, @tagName(.list)),
-        //                 .int => |_| try self.writeStdout(al, @tagName(.int)),
-        //                 .float => |_| try self.writeStdout(al, @tagName(.float)),
-        //                 .str => |st| try self.writeStdout(al, st),
-        //                 .bool => |_| try self.writeStdout(al, @tagName(.bool)),
-        //             }
-        //         },
-        //     }
     }
+    //     switch (self.kind) {
+    //         .op => |op| try self.writeStdout(al, op.toStr()),
+    //         .block => |bl| try self.writeStdout(al, bl.toStr()),
+    //         .eof => try self.writeStdout(al, "EOF"),
+    //         .unknown => try self.writeStdout(al, "UNK"),
+    //         .kw => |kw| try self.writeStdout(al, kw.toStr()),
+    //         .type => |ttype| {
+    //             switch (ttype) {
+    //                 .ident => |iden| try self.writeStdout(al, iden),
+    //                 .byte => |_| try self.writeStdout(al, @tagName(Token.Kind.@"Type".byte)),
+    //                 .list => |_| try self.writeStdout(al, @tagName(.list)),
+    //                 .int => |_| try self.writeStdout(al, @tagName(.int)),
+    //                 .float => |_| try self.writeStdout(al, @tagName(.float)),
+    //                 .str => |st| try self.writeStdout(al, st),
+    //                 .bool => |_| try self.writeStdout(al, @tagName(.bool)),
+    //             }
+    //         },
+    //     }
 
     pub const Val = union(enum) {
         intl: i32,
