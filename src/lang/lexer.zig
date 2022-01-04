@@ -8,9 +8,10 @@ const colors = @import("../term/colors.zig");
 const Color = colors.Color;
 const Kind = Token.Kind;
 const Val = Token.Val;
-const Op = Kind.Op;
-const Kw = Kind.Kw;
-const Block = Kind.Block;
+const @"Type" = @import("./token/type.zig").@"Type";
+const Op = @import("./token/op.zig").Op;
+const Block = @import("./token/block.zig").Block;
+const Kw = @import("./token/kw.zig").Kw;
 const lg = std.log.scoped(.lexer);
 
 // pub fn lex(allocator: std.mem.Allocator, inp: []u8) !std.ArrayList(Token) {
@@ -27,9 +28,11 @@ pub const Lexer = struct {
     const Self = @This();
 
     pub fn init(inp: []const u8, a: std.mem.Allocator) Lexer {
+        const tokens = std.ArrayList(Token).init(a);
+        defer tokens.deinit();
         return Lexer{
             .inp = inp,
-            .tokens = std.ArrayList(Token).init(a),
+            .tokens = tokens,
             .line = 1,
             .col = 1,
             .pos = 0,
@@ -47,13 +50,19 @@ pub const Lexer = struct {
                 '%' => try self.tokens.append(self.buildOp(.mod)),
                 '+' => try self.tokens.append(self.buildOp(.add)),
                 '-' => _ = try self.addToken(try self.subOrOther()),
+                '^' => try self.tokens.append(self.buildOp(.caret)),
+                '#' => try self.tokens.append(self.buildOp(.pound)),
+                '@' => try self.tokens.append(self.buildOp(.at)),
+                '$' => try self.tokens.append(self.buildOp(.dol)),
+                '~' => try self.tokens.append(self.buildOp(.tilde)),
+                '`' => try self.tokens.append(self.buildBlock(.btick)),
                 '!' => _ = try self.addToken(try self.exclOrOther()),
                 '?' => try self.tokens.append(self.buildOp(.ques)),
-                '<' => try self.tokens.append(self.followed('=', Kind{ .op = .le }, Kind{ .op = .lt })),
-                '>' => try self.tokens.append(self.followed('=', Kind{ .op = .ge }, Kind{ .op = .gt })),
-                '=' => try self.tokens.append(self.followed('=', Kind{ .op = .eq_comp }, Kind{ .op = .assign })),
-                '(' => try self.tokens.append(self.buildBlock(.lpar)),
-                ')' => try self.tokens.append(self.buildBlock(.rpar)),
+                '<' => _ = try self.addToken(try self.ltOrOther()),
+                '>' => _ = try self.addToken(try self.gtOrOther()),
+                '=' => _ = try self.addToken(try self.eqOrOther()),
+                '(' => try self.tokens.append(self.buildBlock(Block{ .lpar = null })),
+                ')' => try self.tokens.append(self.buildBlock(Block{ .rpar = null })),
                 '{' => try self.tokens.append(self.buildBlock(Block{ .lbrace = null })),
                 '}' => try self.tokens.append(self.buildBlock(Block{ .rbrace = null })),
                 ';' => try self.tokens.append(self.buildOp(.semicolon)),
@@ -75,7 +84,6 @@ pub const Lexer = struct {
 
     pub fn addToken(self: *Self, tokn: ?Token) !?Token {
         if (tokn) |token| {
-            _ = self.next();
             self.tokens.append(token) catch {
                 return LexerError.OutOfSpace;
             };
@@ -100,16 +108,16 @@ pub const Lexer = struct {
         return Token{ .line = self.line, .col = self.col, .kind = kind };
     }
 
-    pub fn buildOp(self: Self, op: Kind.Op) Token {
+    pub fn buildOp(self: Self, op: Op) Token {
         return Token{ .line = self.line, .col = self.col, .kind = Kind{ .op = op } };
     }
-    pub fn buildKw(self: Self, kw: Kind.Kw) Token {
+    pub fn buildKw(self: Self, kw: Kw) Token {
         return Token{ .line = self.line, .col = self.col, .kind = Kind{ .kw = kw } };
     }
-    pub fn buildBlock(self: Self, block: Kind.Block) Token {
+    pub fn buildBlock(self: Self, block: Block) Token {
         return Token{ .line = self.line, .col = self.col, .kind = Kind{ .block = block } };
     }
-    pub fn buildType(self: Self, @"type": Kind.@"Type") Token {
+    pub fn buildType(self: Self, @"type": @"Type") Token {
         return Token{ .line = self.line, .col = self.col, .kind = Kind{ .type = @"type" } };
     }
 
@@ -153,35 +161,84 @@ pub const Lexer = struct {
     }
 
     // Called when: found ':', need to know if next char is * or else
-    pub fn colonOrOther(self: *Self) LexerError!?Token {
+    pub fn colonOrOther(self: *Lexer) LexerError!?Token {
         if (self.peek()) |ch| {
             const tk = switch (ch) {
-                '>' => self.buildOp(Op.farrow),
+                '.' => {
+                    _ = self.next();
+                    if (self.peek()) |chn| {
+                        return switch (chn) {
+                            '.' => self.buildBlock(Block{ .rsynth = null }),
+                            else => self.buildBlock(Block{ .ldata = null }),
+                        };
+                    }
+                    return LexerError.EofInComment;
+                },
+                ':' => self.buildOp(Op.abstractor),
                 '-' => {
                     _ = self.next();
                     if (self.peek()) |chn| {
                         return switch (chn) {
-                            '|' => self.buildBlock(Block.lcomment),
-                            '?' => self.buildBlock(Block.lque),
-                            '!' => self.buildBlock(Block.ldoc),
-                            ':' => self.buildBlock(Block{ .ldef = null }),
+                            '-' => self.buildBlock(Block{ .rdef = null }),
                             else => self.buildBlock(Block{ .rattr = null }),
                         };
                     }
                     return LexerError.EofInComment;
                 },
-                '=' => self.buildOp(Op.sub_eq),
-                '|' => self.buildBlock(Block{ .lstate = null }),
-                '!' => self.buildBlock(Block.ldocln),
-                '?' => self.buildBlock(Block.llnquery),
-                ':' => self.buildOp(Op.abstractor),
+                '=' => self.buildOp(Op.defn),
                 '_', 'a'...'z', 'A'...'Z', '0'...'9' => self.buildOp(Op.faccess),
                 ' ' => self.buildOp(Op.colon),
+                else => null,
+            };
+            _ = self.next();
+            return tk;
+        } else return LexerError.EofInComment;
+    }
+
+    // Called when: found '=', need to know if next char is * or else
+    pub fn eqOrOther(self: *Self) LexerError!?Token {
+        if (self.peek()) |ch| {
+            const tk = switch (ch) {
+                '=' => self.buildOp(Op.eq_comp),
+                '>' => self.buildOp(Op.bfarrow),
+                '@' => self.buildOp(Op.addressed),
+                '?' => self.buildOp(Op.query),
+                '!' => self.buildOp(Op.ne), // assign to something else? never?
+                ':' => self.buildOp(Op.defn), // secondary, colon 1st
+                ' ', '_', 'a'...'z', 'A'...'Z', '0'...'9' => self.buildOp(Op.assign),
+                else => null,
+            };
+            _ = self.next();
+            return tk;
+        } else return LexerError.EofInComment;
+    }
+    pub fn ltOrOther(self: *Self) LexerError!?Token {
+        if (self.peek()) |ch| {
+            const tk = switch (ch) {
+                '=' => self.buildOp(Op.le),
+                '>' => self.buildOp(Op.assoc), // <>
+                '-' => self.buildOp(Op.barrow),
+                '<' => self.buildOp(Op.double_lt), // assign to something else? never?
+                ' ', '_', 'a'...'z', 'A'...'Z', '0'...'9' => self.buildOp(Op.lt), // OR type param?
+                else => null,
+            };
+            _ = self.next();
+            return tk;
+        } else return LexerError.EofInComment;
+    }
+    pub fn gtOrOther(self: *Self) LexerError!?Token {
+        if (self.peek()) |ch| {
+            _ = self.next();
+            const tk = switch (ch) {
+                '=' => self.buildOp(Op.ge),
+                '>' => self.buildOp(Op.double_gt), // <>
+                ' ', '_', 'a'...'z', 'A'...'Z', '0'...'9' => self.buildOp(Op.gt), // OR type param?
                 else => null,
             };
             return tk;
         } else return LexerError.EofInComment;
     }
+    // Called when: found '-', need to know if next char is * or else
     pub fn subOrOther(self: *Self) LexerError!?Token {
         if (self.peek()) |ch| {
             const tk = switch (ch) {
@@ -306,14 +363,14 @@ pub const Lexer = struct {
         if (Kind.isKw(st)) |kwd| {
             outp.kind = Kind{ .kw = kwd };
         } else {
-            outp.kind = Kind{ .type = Kind.@"Type"{ .ident = st } };
+            outp.kind = Kind{ .type = @"Type"{ .ident = st } };
             outp.val = Val{ .str = st };
         }
         return outp;
     }
 
     pub fn strLiteral(self: *Self) !Token {
-        var outp = self.buildType(Kind.@"Type"{ .str = "" });
+        var outp = self.buildType(@"Type"{ .str = "" });
         const p_i = self.pos;
         while (self.next()) |ch| {
             switch (ch) {
@@ -365,7 +422,7 @@ pub const Lexer = struct {
     }
 
     pub fn intLiteral(self: *Self) LexerError!Token {
-        var outp = self.buildKind(Kind{ .type = Kind.@"Type"{ .int = 0 } });
+        var outp = self.buildKind(Kind{ .type = @"Type"{ .int = 0 } });
         const p_i = self.pos;
         while (self.peek()) |ch| {
             switch (ch) {
@@ -392,7 +449,7 @@ pub const Lexer = struct {
     }
 
     pub fn intChar(self: *Self) LexerError!Token {
-        var outp = self.buildType(Kind.@"Type"{ .int = 0 });
+        var outp = self.buildType(@"Type"{ .int = 0 });
         switch (try self.nextOrEmpty()) {
             '\'', '\n' => return LexerError.EmptyCharConst,
             '\\' => {

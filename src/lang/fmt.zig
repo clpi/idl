@@ -21,10 +21,7 @@ pub fn kindColors(self: Token) type {
     };
 }
 
-pub fn toStr(self: Self, value: []const u8) ![]const u8 {
-    const init_fmt = "{s}{s}(L{d:>3}, C{d:>3}) {s} {s:<8}{s}{s}\t{s:<12}{s}";
-    const d = comptime Color.white.dim(.bright_fg);
-    const r = colors.reset();
+pub fn toStr(self: Self, a: std.mem.Allocator, s: []const u8) ![]const u8 {
     const c1 = switch (self.kind) {
         .unknown => |_| comptime Color.red.bold(.bright_fg),
         .eof => |_| comptime Color.cyan.bold(.bright_fg),
@@ -41,6 +38,7 @@ pub fn toStr(self: Self, value: []const u8) ![]const u8 {
         .type => |_| comptime Color.green.finish(.normal_fg),
         .block => |_| comptime Color.yellow.finish(.normal_fg),
     };
+    const d = comptime Color.white.dim(.bright_fg);
     const w = switch (self.kind) {
         .op => comptime Color.white.finish(.bright_fg),
         .type => |ty| switch (ty) {
@@ -50,9 +48,10 @@ pub fn toStr(self: Self, value: []const u8) ![]const u8 {
         },
         else => comptime Color.white.bold(.bright_fg),
     };
-    var buf: [256]u8 = undefined;
+    const r = colors.reset();
+    const init_fmt = "{s}{s}(L{d:>3}, C{d:>3}) {s} {s:<8}{s}{s}\t{s:<12}{s}";
     const common_args = .{ r, d, self.line, self.col, c1, @tagName(self.kind), r, c2, self.kind.toStr(), w };
-    return try std.fmt.bufPrint(&buf, init_fmt ++ "{s}\n", common_args ++ .{value});
+    return try std.fmt.allocPrint(a, init_fmt ++ "{s}\n", common_args ++ .{s});
 }
 pub fn writeStr(self: Self, f: std.fs.File, a: std.mem.Allocator, s: []const u8) ![]const u8 {
     const c1 = switch (self.kind) {
@@ -105,37 +104,38 @@ pub fn write(self: Token, al: std.mem.Allocator) ![]const u8 {
     var tval = self.val;
     if (tval) |value| {
         return switch (value) {
-            .str => |st| try writeStdOut(self, al, st),
-            .byte => |_| try writeStdOut(self, al, ""),
-            .float => |_| try writeStdOut(self, al, ""),
-            .intl => |_| try writeStdOut(self, al, ""),
+            .str => |st| try toStr(self, al, st),
+            .byte => |_| try toStr(self, al, ""),
+            .float => |_| try toStr(self, al, ""),
+            .intl => |_| try toStr(self, al, ""),
         };
     } else {
         return switch (self.kind) {
             .op => |o| return switch (o) {
-                .newline, .semicolon => try writeStdOut(self, al, "::"),
-                .sub => try writeStdOut(self, al, "-"),
-                .add => try writeStdOut(self, al, "-"),
-                .access => try writeStdOut(self, al, "|"),
-                else => try writeStdOut(self, al, ""),
+                .newline, .semicolon => try toStr(self, al, "::"),
+                .sub => try toStr(self, al, "-"),
+                .add => try toStr(self, al, "-"),
+                .access => try toStr(self, al, "|"),
+                else => try toStr(self, al, ""),
             },
             .block => |b| switch (b.isBlockStart()) {
-                .start => try writeStdOut(self, al, "\x1b[0m\x1b[33m/- blk start -\\"),
-                .end => try writeStdOut(self, al, "\x1b[0m\x1b[33m\\-  blk end  -/"),
-                .outside => try writeStdOut(self, al, ""),
+                .start => try toStr(self, al, "\x1b[0m\x1b[33m/- blk start -\\"),
+                .end => try toStr(self, al, "\x1b[0m\x1b[33m\\-  blk end  -/"),
+                .outside => try toStr(self, al, ""),
             },
-            .eof => try writeStdOut(self, al, "EOF"),
-            .unknown => try writeStdOut(self, al, "UNK"),
-            .kw => |_| try writeStdOut(self, al, ""),
+            .eof => try toStr(self, al, "EOF"),
+            .unknown => try toStr(self, al, "UNK"),
+            .kw => |_| try toStr(self, al, ""),
             .type => |ttype| {
                 return switch (ttype) {
-                    .ident => |iden| try writeStdOut(self, al, iden),
-                    .byte => |_| try writeStdOut(self, al, ""),
-                    .seq => |_| try writeStdOut(self, al, ""),
-                    .int => |_| try writeStdOut(self, al, ""),
-                    .float => |_| try writeStdOut(self, al, ""),
-                    .str => |st| try writeStdOut(self, al, st),
-                    .bool => |st| try writeStdOut(self, al, if (st) "true" else "false"),
+                    .none => |_| try toStr(self, al, ""),
+                    .ident => |iden| try toStr(self, al, iden),
+                    .byte => |_| try toStr(self, al, ""),
+                    .seq => |_| try toStr(self, al, ""),
+                    .int => |_| try toStr(self, al, ""),
+                    .float => |_| try toStr(self, al, ""),
+                    .str => |st| try toStr(self, al, st),
+                    .bool => |st| try toStr(self, al, if (st) "true" else "false"),
                 };
             },
         };

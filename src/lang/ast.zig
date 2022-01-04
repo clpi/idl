@@ -7,7 +7,10 @@ const tk = @import("./token.zig");
 const hash = std.hash;
 const Token = tk.Token;
 const Kind = Token.Kind;
-const Op = Token.Kind.Op;
+const @"Type" = @import("./token/type.zig").@"Type";
+const Op = @import("./token/op.zig").Op;
+const Block = @import("./token/block.zig").Block;
+const Kw = @import("./token/kw.zig").Kw;
 
 pub const AstError = error{
     MemoryLimit,
@@ -15,14 +18,23 @@ pub const AstError = error{
 
 pub const Ast = struct {
     root: ?*Ast.Node,
+    arena: std.heap.ArenaAllocator,
     allocator: std.mem.Allocator,
     sym_map: std.StringHashMap([]const u8),
 
     const Self = @This();
 
-    pub fn init(allocator: std.mem.Allocator) Self {
-        const hm = StringHashMap([]const u8).init(allocator);
-        return Self{ .allocator = allocator, .root = null, .sym_map = hm };
+    pub fn init(a: std.mem.Allocator, arena: std.heap.ArenAllocator) Self {
+        const hm = StringHashMap([]const u8).init(arena);
+        defer hm.deinit();
+        return Self{ .arena = arena, .allocator = a, .root = null, .sym_map = hm };
+    }
+
+    pub fn deinit(self: *Self) void {
+        self.sym_map.deinit(self.allocator);
+        self.arena.state.promote(self.allocator);
+        self.arena.deinit();
+        self.* = undefined;
     }
 
     pub fn newLeaf(self: *Self, data: Token) Ast.Node {

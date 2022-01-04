@@ -13,6 +13,8 @@ const Kw = Token.Kind.Kw;
 const Lexer = lex.Lexer;
 
 pub const Parser = struct {
+    pos: usize,
+    arena: std.heap.ArenaAllocator,
     tokens: std.ArrayList(Token),
     allocator: std.mem.Allocator,
     state: Parser.State,
@@ -20,8 +22,21 @@ pub const Parser = struct {
     const Self = @This();
 
     pub fn init(alloc: std.mem.Allocator, input: []const u8) !Self {
+        const arena = std.heap.ArenaAllocator.init(alloc);
+        errdefer arena.deinit();
         const tokens = try Lexer.init(input, alloc).lex();
-        return Self{ .allocator = alloc, .tokens = tokens, .state = State.init(alloc) };
+        return Self{
+            .pos = 0,
+            .allocator = arena.allocator(),
+            .tokens = tokens,
+            .state = State.init(alloc),
+            .arena = arena,
+        };
+    }
+
+    pub fn deinit(self: *Self) void {
+        self.arena.deinit();
+        self.allocator.free(u8);
     }
 
     pub fn next(self: *Self) ?Token {

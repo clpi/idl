@@ -1,0 +1,13 @@
+.: "data block about this file"
+.: "Blocks starting with .: provide page metadata" 
+
+-- This is a comment. Note that 2-length block 
+-- delimiters are typically for inline (one or less) data
+-- while 3-length blocks are for multiline data definitions
+-- and have different meanings.
+
+Class can block_label:{
+    do print_hi {
+	
+    } 
+}
