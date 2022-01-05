@@ -9,10 +9,11 @@ const meta = std.meta;
 const mem = std.mem;
 const enums = std.enums;
 const fieldNames = meta.fieldNames;
-pub const ops = @import("./token/op.zig");
-pub const bloc = @import("./token/block.zig");
-pub const tt = @import("./token/type.zig");
-pub const kws = @import("./token/kw.zig");
+const lex = @import("./lexer.zig");
+const ops = @import("./token/op.zig");
+const bloc = @import("./token/block.zig");
+const tt = @import("./token/type.zig");
+const kws = @import("./token/kw.zig");
 pub const Kind = Token.Kind;
 pub const Op = ops.Op;
 pub const Block = bloc.Block;
@@ -124,6 +125,18 @@ pub const Token = struct {
         }
     };
 };
+
+pub fn tokFile(gpa: std.mem.Allocator, comptime path: ?[]const u8) !void {
+    const test_file = if (path) |p| @embedFile(p) else @embedFile("../../res/test.is");
+    // var arena = std.heap.ArenaAllocator.init(gpa);
+    // .respOk("Welcome to the Idlang TOKENIZER REPL\n");
+    var lx = lex.Lexer.init(test_file, gpa);
+    _ = try lx.lex();
+    const tokens = try lx.tokenListToString();
+    _ = try std.io.getStdOut().writeAll(tokens);
+    var at = ast.Ast.create(gpa, test_file);
+    std.debug.print("AST DEBUG: {}", .{at});
+}
 
 const expect = std.testing.expect;
 const expectStrEq = std.testing.expectEqualStrings;

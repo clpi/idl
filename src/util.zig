@@ -26,42 +26,6 @@ pub fn cwd() []const u8 {
     return pw;
 }
 
-pub fn ilang() []const u8 {
-    return comptime Color.blue.bold(null) ++ "[" ++ col.reset() ++
-        Color.blue.bold(null) ++ " I" ++ col.reset() ++
-        Color.green.finish(.bright_fg) ++ "lang " ++ col.reset() ++
-        Color.blue.bold(null) ++ "]" ++ col.reset();
-}
-pub fn arrow_str(comptime color: Color) []const u8 {
-    return comptime color.bold(null) ++ " -> " ++ col.reset();
-}
-pub fn resp_div(comptime color: Color) []const u8 {
-    return comptime color.bold(null) ++ " :: " ++ col.reset();
-}
-pub fn ok_str() []const u8 {
-    return comptime Color.green.bold(null) ++ "[" ++ col.reset() ++
-        Color.green.bold(null) ++ "OK" ++ col.reset() ++
-        Color.green.bold(.bright_fg) ++ "] " ++ col.reset();
-}
-pub fn err_str() []const u8 {
-    return comptime Color.green.bold(null) ++ "[" ++ col.reset() ++
-        Color.red.bold(.bright_fg) ++ "ERR" ++ col.reset() ++
-        Color.red.bold(.bright_fg) ++ "] " ++ col.reset();
-}
-
-pub fn prompt() !void {
-    const pr = ilang();
-    const arr = arrow_str(.yellow);
-    std.debug.print("{s}{s}{s}", .{ pr, "", arr });
-}
-
-pub fn respOk(comptime s: []const u8) void {
-    std.debug.print("{s}{s}{s}{s}\n", .{ comptime ilang(), comptime resp_div(.yellow), comptime ok_str(), comptime s });
-}
-pub fn respErr(comptime s: []const u8) void {
-    std.debug.print("{s}{s}{s}{s}\n", .{ comptime ilang(), comptime resp_div(.red), comptime err_str(), comptime s });
-}
-
 //// Same as print, but second arg is anytype, just like normal bufPrint
 pub fn printA(comptime s: []const u8, msg: anytype) void {
     std.debug.print(s, msg);

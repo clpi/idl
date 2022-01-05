@@ -45,8 +45,8 @@ pub fn log(
         .parser => "[" ++ cb ++ "PARS" ++ cd ++ " :: ",
         .lexer => "[" ++ bb ++ "LEX " ++ bd ++ " :: ",
         .vm => "[" ++ mb ++ " VM " ++ md ++ " :: ",
-        .cli => "[" ++ yb ++ "CLI " ++ yd ++ " :: ",
-        .ast => "[" ++ bb ++ "AST " ++ bd ++ " :: ",
+        .cli => "[" ++ yb ++ "CLI " ++ yd ++ " ][ ",
+        .ast => "[" ++ bb ++ "AST " ++ bd ++ " ][ ",
         .expr => "[" ++ gb ++ "EXPR" ++ gd ++ ":: ",
         .fmt => yb ++ "FMTG" ++ "\x1b[37;1m" ++ " :: ",
         .token => mb ++ @tagName(scope)[0..3] ++ md ++ " :: ",
@@ -56,15 +56,15 @@ pub fn log(
             return,
     };
     const status_pre = switch (level) {
-        .debug => gb ++ "DBG " ++ r ++ gd ++ "] ->",
-        .info => bb ++ "INF " ++ r ++ bd ++ "] ->",
-        .warn => yb ++ "WAR " ++ r ++ yd ++ "] ->",
-        .err => rb ++ "ERR " ++ r ++ rd ++ "] ->",
+        .debug => gb ++ "DBG " ++ r ++ gd ++ "] -> ",
+        .info => bb ++ "INF " ++ r ++ bd ++ "] -> ",
+        .warn => yb ++ "WAR " ++ r ++ yd ++ "] -> ",
+        .err => rb ++ "ERR " ++ r ++ rd ++ "] -> ",
     };
-    std.debug.getStderrMutex().lock();
-    defer std.debug.getStderrMutex().unlock();
+    // std.debug.getStderrMutex().lock();
+    // defer std.debug.getStderrMutex().unlock();
     // const stderr = std.io.getStdErr().writer();
     const stdout = std.io.getStdOut().writer();
-    nosuspend stdout.print(sc_colors ++ status_pre ++ format ++ "\n", args) catch return;
+    stdout.print(sc_colors ++ status_pre ++ format ++ "\n", args) catch return;
     // nosuspend stderr.print(sc_colors ++ status_pre ++ format ++ "\n", args) catch return;
 }

@@ -8,7 +8,8 @@ const token = @import("./token.zig");
 const Token = token.Token;
 const Op = Token.Kind.Op;
 
-pub const Cursor = packed struct {
+// TODO Figure out why this comes out all messed up
+pub const Cursor = struct {
     line: usize,
     col: usize,
     const Self = @This();
@@ -16,6 +17,7 @@ pub const Cursor = packed struct {
     pub fn default() Cursor {
         return Cursor{ .line = 1, .col = 1 };
     }
+
     pub fn init(l: usize, c: usize) Cursor {
         return Cursor{ .line = l, .col = c };
     }

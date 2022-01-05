@@ -90,6 +90,10 @@ pub const Ast = struct {
         try return new;
     }
 
+    pub fn printJson(self: *Self) !void {
+        try std.json.stringify(self, .{}, std.io.getStdOut().writer());
+    }
+
     pub fn build(self: *Self, tkl: ArrayList(Token)) AstError!?Self {
         // var curr_st = ":";
         if (!self.root) self.withRoot(tkl.next());

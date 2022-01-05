@@ -68,7 +68,10 @@ pub const Kw = enum {
     none,
     maybe,
     int,
+    @"enum",
+    @"class",
     num,
+    rule,
     bool,
     tuple,
     seq,
@@ -76,6 +79,9 @@ pub const Kw = enum {
     proc,
     str,
     float,
+
+    // Redundant to have keyword + value types for float, etc.kwOp
+    // should just consume the keyword and the value in one tuple?
 
     pub const Kwd = @This();
 
@@ -87,6 +93,20 @@ pub const Kw = enum {
         }
         return null;
     }
+
+    pub const Declaration = struct {
+        name: []const u8,
+
+        pub fn fromKw(kw: Kw) ?Declaration {
+            switch (kw) {
+                .rule,
+                .range,
+                .attribute,
+                => {},
+                else => null,
+            }
+        }
+    };
 
     pub fn toStr(kword: Kw) []const u8 {
         return @tagName(kword);
