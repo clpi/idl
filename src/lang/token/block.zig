@@ -49,6 +49,7 @@ pub const Block = union(enum(u8)) {
     rdata: ?[]const u8,
     lsynth: ?[]const u8,
     rsynth: ?[]const u8,
+    page,
 
     pub const Info = struct {
         ident: ?[]const u8,
@@ -62,6 +63,30 @@ pub const Block = union(enum(u8)) {
             'l' => .start,
             'r' => .end,
             else => .outside,
+        };
+    }
+    pub fn closing(self: Block) Block {
+        return switch (self) {
+            .lpar => |l| Block{ .rpar = l },
+            .lbrace => |l| Block{ .rbrace = l },
+            .ldoc => .rdoc,
+            .squote => .squote,
+            .dquote => .dquote,
+            .lbracket => |l| Block{ .rbracket = l },
+            .ldata => |l| Block{ .rdata = l },
+            .lsynth => |l| Block{ .rsynth = l },
+            .lattr => |l| Block{ .rattr = l },
+            .lstate => |l| Block{ .rstate = l },
+            .ldef => |l| Block{ .rdef = l },
+            .lcomment => .rcomment,
+            .ltype => |l| Block{ .rtype = l },
+            .lawait => .rawait,
+            .btick => .btick,
+            .lque => .rque,
+            .lawaitque => .rawaitque,
+            .llnquery => .rlnquery,
+            .ldocln => .rdocln,
+            else => Block{ .rbrace = null },
         };
     }
 

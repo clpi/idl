@@ -2,18 +2,21 @@ const std = @import("std");
 const ast = @import("./ast.zig");
 const tok = @import("./token.zig");
 const lex = @import("./lexer.zig");
+const expr = @import("./expr.zig");
+const tfmt = @import("./fmt.zig");
+const ExprBlock = expr.ExprBlock;
+const Cursor = expr.Cursor;
+pub const Op = @import("./token/op.zig").Op;
+pub const Block = @import("./token/block.zig").Block;
+pub const Tty = @import("./token/type.zig").Tty;
+pub const Kw = @import("./token/kw.zig").Kw;
 const logs = std.log.scoped(.parser);
 const Ast = ast.Ast;
 const Token = tok.Token;
-const Kind = Token.Kind;
-const Op = Token.Kind.Op;
-const Typ = Token.Kind.@"Type";
-const Block = Token.Kind.Block;
-const Kw = Token.Kind.Kw;
 const Lexer = lex.Lexer;
 
 pub const Parser = struct {
-    pos: usize,
+    pos: Cursor,
     arena: std.heap.ArenaAllocator,
     tokens: std.ArrayList(Token),
     allocator: std.mem.Allocator,
@@ -22,11 +25,11 @@ pub const Parser = struct {
     const Self = @This();
 
     pub fn init(alloc: std.mem.Allocator, input: []const u8) !Self {
-        const arena = std.heap.ArenaAllocator.init(alloc);
+        var arena = std.heap.ArenaAllocator.init(alloc);
         errdefer arena.deinit();
         const tokens = try Lexer.init(input, alloc).lex();
         return Self{
-            .pos = 0,
+            .pos = Cursor{ .line = 1, .col = 1 },
             .allocator = arena.allocator(),
             .tokens = tokens,
             .state = State.init(alloc),
@@ -44,21 +47,43 @@ pub const Parser = struct {
     }
 
     pub fn parse(self: *Self) !Ast {
-        var output = Ast.init(self.allocator);
-        var token_iter = Token.Iter.init(self.allocator, self.tokens);
-        while (token_iter.next()) |tk| {
-            std.log.scoped(.parser).debug("{s}", .{try tk.toStr("")});
+        var output = Ast.init(self.allocator, self.arena);
+        var blocks = std.ArrayList(*ExprBlock).init(self.allocator);
+        // var curr_block: ?Block = null;
+        // var curr_expr_block: ?ExprBlock = null;
+        defer blocks.deinit();
+        for (self.tokens.items) |tk| {
+            std.log.scoped(.parser).debug("{s}", .{try tfmt.toStr(tk, self.allocator, "")});
             switch (tk.kind) {
-                .block => |bloc| switch (bloc) {
-                    .lpar => {},
-                    .rpar => {},
-                    .lbracket => {},
-                    .rbracket => {},
-                    .lbrace => {},
-                    .rbrace => {},
-                    .squote => {},
-                    .dquote => {},
-                    else => {},
+                .block => |bloc| {
+                    // if (@tagName(bloc)[0] == 'l') {
+                    //     logs.warn("GOT BLOCK START {s}", .{@tagName(bloc)});
+                    //     curr_block = bloc;
+                    //     _ = try self.allocator.create(ExprBlock);
+                    //     curr_expr_block.? = &ExprBlock.init(self.pos.line, self.pos.col, bloc, self.allocator);
+                    //     self.state.curr_block = @enumToInt(bloc);
+                    // } else if (@tagName(bloc)[0] == 'r') {
+                    //     const bc = curr_block.?.closing();
+                    //     if (@enumToInt(bc) == @enumToInt(bloc)) {
+                    //         logs.warn("GOT BLOCK END {s}", .{@tagName(bloc)});
+                    //         try blocks.append(curr_expr_block.?);
+                    //         self.state.curr_block = null;
+                    //         curr_expr_block = null;
+                    //         curr_block = null;
+                    //     }
+                    // } else {
+                    switch (bloc) {
+                        .lpar => {},
+                        .rpar => {},
+                        .lbracket => {},
+                        .rbracket => {},
+                        .lbrace => {},
+                        .rbrace => {},
+                        .squote => {},
+                        .dquote => {},
+                        else => {},
+                    }
+                    // }
                 },
                 .unknown => return PerserError.UnknownToken,
                 .eof => break,
@@ -72,6 +97,7 @@ pub const Parser = struct {
                     else => {},
                 },
                 .type => |typ| switch (typ) {
+                    .none => {},
                     .ident => |_| {},
                     .byte => |_| {},
                     .str => |_| {},
@@ -81,8 +107,19 @@ pub const Parser = struct {
                     .seq => {},
                 },
             }
-            logs.info("[X: {d}, Y: {d}] {s}    {s}", .{ tk.line, tk.col, tk.kind.toStr(), tk.val });
+            logs.info("{s}", .{tfmt.toStr(tk, self.allocator, "")});
+            // if (curr_expr_block) |ceb| {
+            //     try ceb.tokens.append(tk);
+            // }
         }
+        logs.warn("BLOCKS INFO: \n", .{});
+        for (blocks.items) |bloc| {
+            logs.warn("INFO: BLOCK {s} ({s}):", .{ bloc.pos, bloc.sblock.toStr() });
+            for (bloc.tokens.items) |tkn| {
+                logs.warn("TOKEN: {s} ", .{try tfmt.toStr(tkn, self.allocator, "")});
+            }
+        }
+        logs.warn("BLOCKS LEN: {d}", .{std.mem.len(blocks.items)});
         return output;
     }
 
@@ -119,24 +156,24 @@ pub const Parser = struct {
 
     pub const State = struct {
         curr_t: ?Token,
-        curr_idx: i32,
-        curr_block: ?[]const u8,
-        symbols: std.AutoHashMap(usize, []const u8),
-        blocks: std.StringHashMap(Token.Kind.Block),
+        curr_idx: Cursor,
+        curr_block: ?i32,
+        symbols: std.ArrayList(u32),
+        blocks: std.ArrayList(Block),
         list: ?[]const u8,
 
         pub fn init(all: std.mem.Allocator) Parser.State {
             return Parser.State{
-                .curr_idx = 0,
+                .curr_idx = Cursor{ .line = 1, .col = 1 },
                 .curr_t = null,
                 .curr_block = null,
-                .symbols = std.AutoHashMap(usize, []const u8).init(all),
-                .blocks = std.StringHashMap(Token.Kind.Block).init(all),
+                .symbols = std.ArrayList(u32).init(all),
+                .blocks = std.ArrayList(Block).init(all),
                 .list = null,
             };
         }
 
-        pub fn beginBlock(self: Parser.State, blc: Token.Kind.Block) void {
+        pub fn beginBlock(self: Parser.State, blc: Block) void {
             switch (blc) {
                 .lbrace => |braceid| if (braceid) |br_ident| {
                     self.blocks.put(br_ident, blc);

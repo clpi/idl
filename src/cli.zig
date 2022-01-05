@@ -2,6 +2,8 @@ const std = @import("std");
 const eq = std.mem.eql;
 const print = std.fmt.bufPrint;
 const util = @import("./util.zig");
+const ast = @import("./lang/ast.zig");
+const Ast = ast.Ast;
 const Token = @import("./lang/token.zig").Token;
 const lexer = @import("./lang/lexer.zig");
 const parser = @import("./lang/parser.zig");
@@ -74,14 +76,20 @@ pub fn procArgs(gpa: std.mem.Allocator) !void {
 
 pub fn tokFile(gpa: std.mem.Allocator) !void {
     const test_file = @embedFile("../res/test.is");
+    // var arena = std.heap.ArenaAllocator.init(gpa);
     util.respOk("Welcome to the Idlang TOKENIZER REPL\n");
-    // var psr = parser.Parser.init(gpa, test_file);
-    // _ = try psr.parse();
+    // var psr = try parser.Parser.init(gpa, test_file);
+    // var ast = try psr.parse();
+    // std.log.scoped(.cli).warn("GOT AST: {s}", .{ast});
 
     var lx = lexer.Lexer.init(test_file, gpa);
     _ = try lx.lex();
     const tokens = try lx.tokenListToString();
     _ = try std.io.getStdOut().writeAll(tokens);
+    var at = ast.Ast.create(gpa, test_file);
+    std.debug.print("AST DEBUG: {}", .{at});
+
+    // at.root.inOrder(gpa);
 }
 
 // 1 => {

@@ -1,12 +1,14 @@
 const std = @import("std");
 const testing = std.testing;
 const tok = @import("./token.zig");
+const log = std.log.scoped(.lexer);
 const ascii = std.ascii;
 const Token = tok.Token;
 const tfmt = @import("./fmt.zig");
 const colors = @import("../term/colors.zig");
 const Color = colors.Color;
 const Kind = Token.Kind;
+pub const Cursor = @import("./expr.zig").Cursor;
 const Val = Token.Val;
 const @"Type" = @import("./token/type.zig").@"Type";
 const Op = @import("./token/op.zig").Op;
@@ -19,9 +21,8 @@ const lg = std.log.scoped(.lexer);
 pub const Lexer = struct {
     inp: []const u8,
     tokens: std.ArrayList(Token),
-    line: usize,
-    col: usize,
-    pos: usize,
+    pos: Cursor,
+    offset: usize,
     start: bool,
     allocator: std.mem.Allocator,
 
@@ -33,9 +34,8 @@ pub const Lexer = struct {
         return Lexer{
             .inp = inp,
             .tokens = tokens,
-            .line = 1,
-            .col = 1,
-            .pos = 0,
+            .pos = Cursor.default(),
+            .offset = 0,
             .start = true,
             .allocator = a,
         };
@@ -44,11 +44,11 @@ pub const Lexer = struct {
         while (self.next()) |ch| {
             switch (ch) {
                 ' ' => {},
-                '*' => try self.tokens.append(self.buildOp(.mul)),
+                '*' => _ = try self.addToken(try self.mulOrOther()),
                 '\n' => try self.tokens.append(self.buildOp(.newline)),
                 '.' => _ = try self.addToken(try self.periodOrOther()),
                 '%' => try self.tokens.append(self.buildOp(.mod)),
-                '+' => try self.tokens.append(self.buildOp(.add)),
+                '+' => _ = try self.addToken(try self.addOrOther()),
                 '-' => _ = try self.addToken(try self.subOrOther()),
                 '^' => try self.tokens.append(self.buildOp(.caret)),
                 '#' => try self.tokens.append(self.buildOp(.pound)),
@@ -100,48 +100,53 @@ pub const Lexer = struct {
         return st.allocatedSlice();
     }
 
-    pub fn buildToken(self: Self) Token {
-        return Token{ .line = self.line, .col = self.col };
+    pub fn buildToken() Token {
+        return Token{ .kind = .unknown, .offset = 0, .pos = Cursor.default() };
     }
 
     pub fn buildKind(self: Self, kind: Kind) Token {
-        return Token{ .line = self.line, .col = self.col, .kind = kind };
+        return Token{ .offset = 0, .pos = self.pos, .kind = kind };
     }
 
     pub fn buildOp(self: Self, op: Op) Token {
-        return Token{ .line = self.line, .col = self.col, .kind = Kind{ .op = op } };
+        return Token{ .offset = 0, .pos = self.pos, .kind = Kind{ .op = op } };
     }
     pub fn buildKw(self: Self, kw: Kw) Token {
-        return Token{ .line = self.line, .col = self.col, .kind = Kind{ .kw = kw } };
+        return Token{ .offset = 0, .pos = self.pos, .kind = Kind{ .kw = kw } };
     }
     pub fn buildBlock(self: Self, block: Block) Token {
-        return Token{ .line = self.line, .col = self.col, .kind = Kind{ .block = block } };
+        return Token{ .offset = 0, .pos = self.pos, .kind = Kind{ .block = block } };
     }
     pub fn buildType(self: Self, @"type": @"Type") Token {
-        return Token{ .line = self.line, .col = self.col, .kind = Kind{ .type = @"type" } };
+        return Token{ .offset = 0, .pos = self.pos, .kind = Kind{ .type = @"type" } };
     }
 
     pub fn current(self: Self) u8 {
-        return self.inp[self.pos];
+        if (self.offset < self.inp.len) {
+            return self.inp[self.offset];
+        } else return 0;
+    }
+
+    pub fn fmtPosition(self: Self) void {
+        const args = .{ self.pos.line, self.pos.col, self.offset, self.inp.len };
+        log.err("[ln {d}, col {d}, offset {d}, buflen {d}", args);
     }
 
     pub fn next(self: *Self) ?u8 {
         if (self.start) self.start = false else {
-            const isNewLine = self.current() == '\n';
-            self.pos += 1;
-            if (isNewLine) {
-                self.col = 1;
-                self.line += 1;
-            } else self.col += 1;
+            self.offset += 1;
+            if (self.current() == '\n') { // It's a new line
+                self.pos.newLine();
+            } else self.pos.incrCol();
         }
-        if (self.pos >= self.inp.len) return null else return self.current();
+        if (self.offset >= self.inp.len) return null else return self.current();
     }
 
     pub fn peek(self: Self) ?u8 {
-        if (self.pos + 1 >= self.inp.len) {
+        if (self.offset + 1 >= self.inp.len) {
             return null;
         } else {
-            return self.inp[self.pos + 1];
+            return self.inp[self.offset + 1];
         }
     }
 
@@ -238,7 +243,31 @@ pub const Lexer = struct {
             return tk;
         } else return LexerError.EofInComment;
     }
-    // Called when: found '-', need to know if next char is * or else
+    // Called when: found '+', need to know if next char is * or else
+    pub fn mulOrOther(self: *Self) LexerError!?Token {
+        if (self.peek()) |ch| {
+            const tk = switch (ch) {
+                '*' => self.buildOp(Op.exp),
+                '=' => self.buildOp(Op.mul_eq),
+                ' ' => self.buildOp(Op.mul),
+                '_', 'a'...'z', 'A'...'Z', '0'...'9' => self.buildOp(Op.pointer),
+                else => null,
+            };
+            return tk;
+        } else return LexerError.EofInComment;
+    }
+    // Called when: found '+', need to know if next char is * or else
+    pub fn addOrOther(self: *Self) LexerError!?Token {
+        if (self.peek()) |ch| {
+            const tk = switch (ch) {
+                '+' => self.buildOp(Op.bind),
+                '=' => self.buildOp(Op.add_eq),
+                ' ', '_', 'a'...'z', 'A'...'Z', '0'...'9' => self.buildOp(Op.add),
+                else => null,
+            };
+            return tk;
+        } else return LexerError.EofInComment;
+    }
     pub fn subOrOther(self: *Self) LexerError!?Token {
         if (self.peek()) |ch| {
             const tk = switch (ch) {
@@ -350,15 +379,15 @@ pub const Lexer = struct {
     }
 
     pub fn identOrKw(self: *Self) !Token {
-        var outp = self.buildToken();
-        const p_i = self.pos;
+        var outp = Self.buildToken();
+        const p_i = self.offset;
         while (self.peek()) |ch| : (_ = self.next()) {
             switch (ch) {
                 '_', 'a'...'z', 'A'...'Z', '0'...'9' => {},
                 else => break,
             }
         }
-        const p_f = self.pos + 1;
+        const p_f = self.offset + 1;
         var st = self.inp[p_i..p_f];
         if (Kind.isKw(st)) |kwd| {
             outp.kind = Kind{ .kw = kwd };
@@ -371,7 +400,7 @@ pub const Lexer = struct {
 
     pub fn strLiteral(self: *Self) !Token {
         var outp = self.buildType(@"Type"{ .str = "" });
-        const p_i = self.pos;
+        const p_i = self.offset;
         while (self.next()) |ch| {
             switch (ch) {
                 '"' => break,
@@ -387,13 +416,13 @@ pub const Lexer = struct {
         } else {
             return LexerError.EofInStr;
         }
-        const p_f = self.pos + 1;
+        const p_f = self.offset + 1;
         outp.val = Val{ .str = self.inp[p_i..p_f] };
         return outp;
     }
 
     pub fn followed(self: *Self, by: u8, pos_type: Kind, neg_type: Kind) Token {
-        var outp = self.buildToken();
+        var outp = Self.buildToken();
         if (self.peek()) |ch| {
             if (ch == by) {
                 _ = self.next();
@@ -423,7 +452,7 @@ pub const Lexer = struct {
 
     pub fn intLiteral(self: *Self) LexerError!Token {
         var outp = self.buildKind(Kind{ .type = @"Type"{ .int = 0 } });
-        const p_i = self.pos;
+        const p_i = self.offset;
         while (self.peek()) |ch| {
             switch (ch) {
                 '0'...'9' => {
@@ -435,7 +464,7 @@ pub const Lexer = struct {
                 else => break,
             }
         }
-        const p_f = self.pos + 1;
+        const p_f = self.offset + 1;
         outp.val = Val{
             .intl = std.fmt.parseInt(i32, self.inp[p_i..p_f], 10) catch {
                 return LexerError.InvalidNum;
@@ -500,7 +529,7 @@ pub const Tokenizer = struct {
     }
 };
 
-pub const LexerError = error{ EmptyCharConst, UnknownEscSeq, MulticharConst, EofInComment, EofInStr, EolInStr, UnknownChar, InvalidNum, OutOfSpace } || std.fmt.ParseIntError;
+pub const LexerError = error{ Init, EmptyCharConst, UnknownEscSeq, MulticharConst, EofInComment, EofInStr, EolInStr, UnknownChar, InvalidNum, OutOfSpace } || std.fmt.ParseIntError;
 
 test "parses_idents_ok" {
     testing.expectEqual(5, 5);

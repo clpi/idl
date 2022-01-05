@@ -50,7 +50,7 @@ pub fn toStr(self: Self, a: std.mem.Allocator, s: []const u8) ![]const u8 {
     };
     const r = colors.reset();
     const init_fmt = "{s}{s}(L{d:>3}, C{d:>3}) {s} {s:<8}{s}{s}\t{s:<12}{s}";
-    const common_args = .{ r, d, self.line, self.col, c1, @tagName(self.kind), r, c2, self.kind.toStr(), w };
+    const common_args = .{ r, d, self.pos.line, self.pos.col, c1, @tagName(self.kind), r, c2, self.kind.toStr(), w };
     return try std.fmt.allocPrint(a, init_fmt ++ "{s}\n", common_args ++ .{s});
 }
 pub fn writeStr(self: Self, f: std.fs.File, a: std.mem.Allocator, s: []const u8) ![]const u8 {

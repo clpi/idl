@@ -17,6 +17,7 @@ pub const Kind = Token.Kind;
 pub const Op = ops.Op;
 pub const Block = bloc.Block;
 pub const @"Type" = tt.@"Type";
+pub const Cursor = @import("./expr.zig").Cursor;
 pub const Kw = kws.Kw;
 
 pub const TokenError = error{
@@ -24,12 +25,26 @@ pub const TokenError = error{
 };
 
 pub const Token = struct {
-    line: usize,
-    col: usize,
+    pos: Cursor,
+    offset: usize,
     kind: Token.Kind = .unknown,
     val: ?Token.Val = null,
 
     const Self = @This();
+
+    pub fn initKind(k: Token.Kind, v: ?Token.Val) Self {
+        return Self{
+            .pos = Cursor.default(),
+            .offset = 0,
+            .kind = k,
+            .val = v,
+        };
+    }
+
+    // TODO Actually manually define precedence
+    pub fn hasPrecedence(self: Self, other: Self) bool {
+        return @enumToInt(self.kind) > @enumToInt(other.kind);
+    }
 
     pub const Kind = union(enum(u8)) {
         op: Op,
