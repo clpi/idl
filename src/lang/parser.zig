@@ -53,25 +53,30 @@ pub const Parser = struct {
         // var curr_expr_block: ?ExprBlock = null;
         defer blocks.deinit();
         for (self.tokens.items) |tk| {
-            std.log.scoped(.parser).debug("{s}", .{try tfmt.toStr(tk, self.allocator, "")});
+            logs.debug("{s}", .{try tfmt.toStr(tk, self.allocator, "")});
             switch (tk.kind) {
                 .block => |bloc| {
-                    // if (@tagName(bloc)[0] == 'l') {
-                    //     logs.warn("GOT BLOCK START {s}", .{@tagName(bloc)});
-                    //     curr_block = bloc;
-                    //     _ = try self.allocator.create(ExprBlock);
-                    //     curr_expr_block.? = &ExprBlock.init(self.pos.line, self.pos.col, bloc, self.allocator);
-                    //     self.state.curr_block = @enumToInt(bloc);
-                    // } else if (@tagName(bloc)[0] == 'r') {
-                    //     const bc = curr_block.?.closing();
-                    //     if (@enumToInt(bc) == @enumToInt(bloc)) {
-                    //         logs.warn("GOT BLOCK END {s}", .{@tagName(bloc)});
-                    //         try blocks.append(curr_expr_block.?);
-                    //         self.state.curr_block = null;
-                    //         curr_expr_block = null;
-                    //         curr_block = null;
-                    //     }
-                    // } else {
+                    if (@tagName(bloc)[0] == 'l') {
+                        logs.warn("GOT BLOCK START {s}", .{@tagName(bloc)});
+                        blocks.append(@tagName(bloc));
+                        //     curr_block = bloc;
+                        //     _ = try self.allocator.create(ExprBlock);
+                        //     curr_expr_block.? = &ExprBlock.init(self.pos.line, self.pos.col, bloc, self.allocator);
+                        //     self.state.curr_block = @enumToInt(bloc);
+                    } else if (@tagName(bloc)[0] == 'r') {
+                        logs.warn("GOT BLOCK START {s}", .{@tagName(bloc)});
+                        blocks.append(@tagName(bloc));
+                        // const bc = curr_block.?.closing();
+                        //     if (@enumToInt(bc) == @enumToInt(bloc)) {
+                        //         logs.warn("GOT BLOCK END {s}", .{@tagName(bloc)});
+                        //         try blocks.append(curr_expr_block.?);
+                        //         self.state.curr_block = null;
+                        //         curr_expr_block = null;
+                        //         curr_block = null;
+                    } else {
+                        logs.warn("GOT OTHER TOKEN {s}", .{@tagName(bloc)});
+                        blocks.append(@tagName(bloc));
+                    }
                     switch (bloc) {
                         .lpar => {},
                         .rpar => {},

@@ -1,3 +1,7 @@
+//! Different and separately-specialized implementations of a graph
+//! in Zig. 
+//!
+//!
 const std = @import("std");
 const log = std.log.scoped(.graph);
 

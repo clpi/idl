@@ -1,4 +1,6 @@
 const std = @import("std");
+const stdout = std.io.getStdOut;
+const streams = &kstdout.outStream().stream();
 const op = @import("term/op.zig");
 const Cursor = @import("term/cursor.zig").Cursor;
 const stdo = std.io.getStdOut();
@@ -37,4 +39,8 @@ pub const Terminal = struct {
     pub fn setCursor(self: Self, x: usize, y: usize) !void {
         try Self.exec(self.cursor.set(x, y));
     }
+
+    pub const Stream = struct { 
+    }
 };
+

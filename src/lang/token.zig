@@ -18,11 +18,36 @@ pub const Kind = Token.Kind;
 pub const Op = ops.Op;
 pub const Block = bloc.Block;
 pub const @"Type" = tt.@"Type";
-pub const Cursor = @import("./expr.zig").Cursor;
 pub const Kw = kws.Kw;
 
 pub const TokenError = error{
     UnexpectedToken,
+};
+
+pub const Cursor = struct {
+    line: usize,
+    col: usize,
+    const Self = @This();
+
+    pub fn default() Cursor {
+        return Cursor{ .line = 1, .col = 1 };
+    }
+
+    pub fn init(l: usize, c: usize) Cursor {
+        return Cursor{ .line = l, .col = c };
+    }
+    pub fn newLine(self: *Cursor) void {
+        self.line += 1;
+        self.col = 1;
+    }
+
+    pub fn incrCol(self: *Cursor) void {
+        self.col += 1;
+    }
+
+    pub fn incrRow(self: *Cursor) Cursor {
+        self.row += 1;
+    }
 };
 
 pub const Token = struct {
@@ -66,6 +91,16 @@ pub const Token = struct {
         pub const isOp = Op.isOp;
         pub const isBool = @"Type".isBool;
         pub const isBlock = Block.isBlock;
+
+        pub fn fromKw(k: Kw) Token.Kind {
+            return Token.Kind{ .kw = k };
+        }
+        pub fn fromOp(o: Op) Token.Kind {
+            return Token.Kind{ .op = o };
+        }
+        pub fn fromType(ty: Type) Token.Kind {
+            return Token.Kind{ .type = ty };
+        }
 
         pub fn toStr(self: Token.Kind) []const u8 {
             return switch (self) {

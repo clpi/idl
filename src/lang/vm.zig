@@ -13,6 +13,7 @@ pub const IdlVm = struct {
     tokens: ArrayList([]const u8),
     globals: ArrayList(i32),
     out: ArrayList(u8),
+    kw_stack: ArrayList([]const u8), // keywords can be appended by user
 
     const stack_size: usize = 64;
     const str_size: usize = @sizeOf(i32);

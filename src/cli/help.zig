@@ -51,7 +51,7 @@ pub fn print_usage() void {
         \\
     ++ col.reset();
     const args =
-        \\  --help <CMD> | -h           An alternative way of getting help 
+        \\  
         \\  --debug      | -d                Enable verbose output for ops
         \\  --version    | -d                Print out the current version
         \\  --curr-user  | -U              Print out the current user info

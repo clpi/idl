@@ -1,27 +1,98 @@
+//! The primary goal of this projeoct is to provide a Zig implementation of the 
+//! Idlspec language, its compiler, vm, and other auxiliary bits and pieces seen
+//! throughout the proposed ecosystem (such as the markup language and spec language)
 const std = @import("std");
+const mem = std.mem;
 const token = @import("./lang/token.zig");
 const builtin = @import("builtin");
-// const parser = @import("./lang/parser.zig");
-// const cli = @import("./cli.zig");
-// const sh = @import("./sh.zig");
-// const eq = std.mem.eq;
-// const Opt = cli.Opt;
-// const Cmd = cli.Cli.Cmd;
-// const matches = cli.matches;
-// // pub const logs = @import("./log.zig");
-// pub const colors = @import("./term/colors.zig");
-// const testing = std.testing;
+const Cmd = @import("./cli.zig").Cmd;
+const match = @import("./cli.zig").match;
 const process = std.process;
 const fs = std.fs;
 const ChildProcess = std.ChildProcess;
-
 pub const io_mode = .evented;
+const Parser = @import("./lang/parser.zig").Parser;
 
-pub fn main() !void {
-    var a = std.heap.ArenaAllocator.init(std.heap.page_allocator).child_allocator;
-    _ = try token.tokFile(a, "../../res/test.is");
+pub fn main() anyerror!void {
+    var a = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    var alo = a.allocator();
+    var args = std.process.args();
+    var mcmd: Cmd = Cmd.help;
+    _ = args.skip();
+    while (try args.next(alo)) |arg| {
+        if (Cmd.isCmd(arg)) |cm| {
+            std.debug.print("Cmd: {s}\n", .{arg});
+            mcmd = cm;
+        } else if (std.mem.startsWith(u8, arg, "--")) {
+            std.debug.print("Opt: {s}\n", .{arg[2..]});
+        } else if (std.mem.startsWith(u8, arg, "-")) {
+            std.debug.print("Opt: {s}", .{arg[1..]});
+        } else {
+            continue;
+        }
+    }
+    try mcmd.exe();
+    // _ = try token.tokFile(alo, "../../res/test.is");
+
 }
+//// Process system args to get command, subcommand(s) (if applicable), and args/flags/opts
+/// Provides the global command, subcommand, opts, and flags.
+pub fn processCmd(a: std.mem.Allocator) !void {
+    const args = std.process.argsAlloc(a);
+    defer std.process.argsFree(a, args);
 
+    var cmd: ?Cmd = null;
+    var arg_i: usize = 1;
+    const arg = args[arg_i];
+    // ARG POSITION 1 corresponds to base command
+    // Iterates through each possible pair/quad of command values and breaks if there's a match
+    std.debug.print("\x1b[37;1m CMD \x1b[32;1m]#:{d}\x1b[0m is:\x1b[33;1m {s}\x1b[0m", .{ arg_i, cmd });
+    const main_cmd = cb: {
+        if (match(arg, "list", "ls")) break :cb Cmd{ .list = null };
+        if (match(arg, "about", "A")) break :cb Cmd{ .about = null };
+        if (match(arg, "build", "B")) break :cb Cmd{ .base = null };
+        if (match(arg, "base", "b")) break :cb Cmd{ .build = null };
+        if (match(arg, "space", "S")) break :cb Cmd{ .id = null };
+        if (match(arg, "page", "p")) break :cb Cmd{ .build = null };
+        if (match(arg, "repl", "R")) break :cb Cmd{ .repl = null };
+        if (match(arg, "shell", "sh")) break :cb Cmd{ .shell = null };
+        if (match(arg, "init", "i")) break :cb Cmd{ .init = null };
+        if (match(arg, "id", "I")) break :cb Cmd{ .id = null };
+        if (match(arg, "guide", "G")) break :cb Cmd{ .build = null };
+        if (match(arg, "query", "q")) break :cb Cmd{ .build = null };
+        if (match(arg, "help", "h") or match(arg, "--help", "-h"))
+            break :cb Cmd{ .build = null };
+    };
+    try main_cmd.exe();
+}
+// var o:  ?Linke([]String u8) = null;
+// defer opts.deinit();
+// For command two, then get subcommands of chosen command and loop thru those
+// to find a match. In timee .
+// while (arg_i < args.len) : (arg_i += 2) {
+//     // First we'll parse boolean valued flags
+//     if (match(a, "--debug", "-d")) {
+//         flags.prepend("verbose");
+//     } else if (match(arg, "--version", "-v")) {
+//         flags.prepend("version");
+//     } else if (match(arg, "--private", "-p")) {
+//         flags.prepend("private");
+//     } else if (match(arg, "--all-bases", "-A")) {
+//         flags.prepend("all-bases");
+//     } else continue;
+
+// Next we'll look through the possible gloobal opt keys
+// if (match(a, "--base", "-b")) { try o.put("base", arg); } //Multiple values allowed
+//      else if (match(arg,"--tag", "-t")) { try o.put("tag", arg); } // Same
+//      else if (match(arg,"--page", "-p"))   { try o.put("page", arg);} //Same
+//      else if (match(arg,"--comments", "-c")) {  try o.put("comment", arg);}
+//      else if (match(arg,"--attr", "-a")) { try o.put("attr", arg); }
+//      else if (match(arg,"--entity", "-e")) { try o.put("entity", arg); }
+// else continue;
+// arg_i += 1;
+// }
+// }
+//
 // }
 //
 //     const args = try std.process.argsAlloc(a);

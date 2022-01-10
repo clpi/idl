@@ -1,15 +1,12 @@
 const std = @import("std");
 const ArrayList = std.ArrayList;
-const AutoHashMap = std.AutoHashMap;
 const StringHashMap = std.StringHashMap;
 const StrMap = std.StringHashMap;
-const tk = @import("./token.zig");
+const Token = @import("./token.zig").Token;
 const hash = std.hash;
-const Token = tk.Token;
 const Kind = Token.Kind;
-const lex = @import("./lexer.zig");
-const Lexer = lex.Lexer;
-const LexerError = lex.LexerError;
+const Lexer = @import("./lexer.zig").Lexer;
+const LexerError = @import("./lexer.zig").LexerError;
 const @"Type" = @import("./token/type.zig").@"Type";
 const Op = @import("./token/op.zig").Op;
 const Block = @import("./token/block.zig").Block;
@@ -21,16 +18,17 @@ pub const AstError = error{
 
 pub const Ast = struct {
     root: ?*Ast.Node = null,
+    input: []const u8,
     arena: std.heap.ArenaAllocator,
     allocator: std.mem.Allocator,
     sym_map: std.StringHashMap([]const u8),
 
     const Self = @This();
 
-    pub fn init(a: std.mem.Allocator, arena: std.heap.ArenaAllocator) Self {
+    pub fn init(a: std.mem.Allocator, arena: std.heap.ArenaAllocator, i: []const u8) Self {
         var hm = StringHashMap([]const u8).init(a);
         defer hm.deinit();
-        return Self{ .arena = arena, .allocator = a, .root = null, .sym_map = hm };
+        return Self{ .arena = arena, .allocator = a, .root = null, .sym_map = hm, .input = i };
     }
 
     pub fn deinit(self: *Self) void {
@@ -54,7 +52,7 @@ pub const Ast = struct {
         std.debug.print("{s}", .{tok_str});
         var arena = std.heap.ArenaAllocator.init(a);
         defer arena.deinit();
-        var ast = Self.init(a, arena);
+        var ast = Self.init(a, arena, input);
         defer ast.deinit();
         // var stack = Stack.init(a, @intCast(i32, input.len));
     }
